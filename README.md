@@ -1,16 +1,18 @@
 # HomeSeer Dimmers
-The aim of this project is to support setting HomeSeer dimmer LEDs/blink states in Home Assistant easily.
+The aim of this project is to manage HomeSeer dimmer LEDs from Home Assistant easily.
 
-The basic premise of the project is to define some entities in Home Assistant (I typically use templated entities) that represents the LED colors and LED blink states 
-and have this app monitor for state changes and then "sync" those changes to the LEDs
+The basic premise is to define some entities in Home Assistant (I typically use template entities) that represents what the color and blink state of the LEDs should be, 
+have this app monitor those entities for state changes and sync those changes to the HomeSeer dimmer LEDs.
 
-This project is created using [NetDaemon](https://netdaemon.xyz/)  and .NET 7.
+Currently HS-WD200+ and HS-WX300 are supported, though HS-WX300 is not tested.
+
+This project is created in C# using [NetDaemon](https://netdaemon.xyz/) and .NET 7.
 
 ## Getting started
 
 Here is the basic configuration steps:
 1. Configure [NetDaemon](https://netdaemon.xyz/). I use it as an HA add-on
-2. Add your templated entities to HA. Here is an example:
+2. Define your entities to HA. Here are examples using templated enitites (in `template.yaml`):
 ```YAML
 - sensor:
     - name: "Dimmer LED 7 Color"
@@ -33,7 +35,9 @@ Here is the basic configuration steps:
     - name: "Dimmer LED 1 Blink"
     ...
 ```
-3. Create 'settings.yaml' for the app and set the configuration of the app as follows:
+To see supported colors, pls refer to [LedStatusColor](Apps/Dimmers/LedStatusColor.cs) enum.
+
+3. Create 'settings.yaml' in the Apps/Dimmers directory, and set the configuration of the app to something like:
 ```YAML
 Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
   DimmerLedColorEntityNamePattern: sensor.dimmer_led_{0}_color
@@ -41,7 +45,9 @@ Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
   LedSyncInterval: 00:10:00
   ZWavePingInterval: 00:00:00 # disabled
 ```
-4. Deploy the app to NetDaemon add-on. I made the following config changes:
+To see supported configuration items, see [Config](Apps/Dimmers/Config.cs)
+
+4. Deploy the app to NetDaemon add-on. Don't forget to make the following configuration changes to the add-on:
 ```
     app_assembly: HomeSeerDimmers.dll
 ```
