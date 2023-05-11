@@ -1,0 +1,12 @@
+﻿Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
+  DimmerLedColorEntityNamePattern: sensor.dimmer_led_{0}_color
+  DimmerLedBlinkEntityNamePattern: binary_sensor.dimmer_led_{0}_blink
+  LedSyncInterval: 00:10:00
+  ZWavePingInterval: 00:00:00 # disabled
+  ZWavePingDevices:
+  - Name: Front Door Lock
+    RefreshCommandClassId: DoorLock
+  - Name: Basement Door Lock
+    RefreshCommandClassId: DoorLock
+  - Name: Garage Door
+    RefreshCommandClassId: SensorBinary
