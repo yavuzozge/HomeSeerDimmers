@@ -4,7 +4,10 @@ The aim of this project is to manage HomeSeer dimmer LEDs from Home Assistant ea
 The basic premise is to define some entities in Home Assistant (I typically use template entities) that represents what the color and blink state of the LEDs should be, 
 have this app monitor those entities for state changes and sync those changes to the HomeSeer dimmer LEDs.
 
-Currently HS-WD200+ and HS-WX300 are supported, though HS-WX300 is not tested.
+Couple of highlights:
+1. Currently HS-WD200+ and HS-WX300 are supported, though HS-WX300 is not tested.
+2. It supports periodic syncs for dimmers. I recommend this to be enabled since sometimes Z-Wave network may drop messages.
+3. It supports periodic pings for Z-Wave devices. This is useful if you want to set your enitites in HA to listen to these Z-Wave devices reliably since Z-Wave network may drop update messages. One example is that you may have a Z-Wave door lock that would send status updates to HA when it is unlocked/locked and you may want to set the dimmer LEDs to change color accordingly. In such cases, pingging those devices would refresh their states in HA even if any previously sent message was lost.
 
 This project is created in C# using [NetDaemon](https://netdaemon.xyz/) and .NET 7.
 
