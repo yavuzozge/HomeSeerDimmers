@@ -10,7 +10,7 @@ This project is created using [NetDaemon](https://netdaemon.xyz/)  and .NET 7.
 
 Here is the basic configuration steps:
 1. Configure [NetDaemon](https://netdaemon.xyz/). I use it as an HA add-on
-1. Add your templated entities to HA. Here is an example:
+2. Add your templated entities to HA. Here is an example:
 ```YAML
 - sensor:
     - name: "Dimmer LED 7 Color"
@@ -33,9 +33,7 @@ Here is the basic configuration steps:
     - name: "Dimmer LED 1 Blink"
     ...
 ```
-
-1.
-Create 'settings.yaml' for the app and set the configuration of the app as follows:
+3. Create 'settings.yaml' for the app and set the configuration of the app as follows:
 ```YAML
 Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
   DimmerLedColorEntityNamePattern: sensor.dimmer_led_{0}_color
@@ -43,6 +41,7 @@ Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
   LedSyncInterval: 00:10:00
   ZWavePingInterval: 00:00:00 # disabled
 ```
-
-1. Deploy the app to NetDaemon add-on. I made the following config changes:
+4. Deploy the app to NetDaemon add-on. I made the following config changes:
+```
     app_assembly: HomeSeerDimmers.dll
+```
