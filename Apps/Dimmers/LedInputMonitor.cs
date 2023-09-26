@@ -23,21 +23,21 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="appConfig">App configuration</param>
         public LedInputMonitor(IHaContext ha, ILogger<LedInputMonitor> logger, IAppConfig<Config> appConfig)
         {
-            ArgumentNullException.ThrowIfNull(ha, nameof(ha));
-            ArgumentNullException.ThrowIfNull(logger, nameof(logger));
+            ArgumentNullException.ThrowIfNull(ha);
+            ArgumentNullException.ThrowIfNull(logger);
 
-            LedInputTable table = LedInputTable.CreateEmpty();
+            LedInputTable table = new();
 
             // Create entities and a lookup table that would update the table above
-            Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)> entityInputUpdateMap = new Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)>();
+            Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)> entityInputUpdateMap = new();
             for (int i = 0; i < LedInputTable.NumberOfLeds; ++i)
             {
                 string entityName = string.Format(appConfig.Value.DimmerLedColorEntityNamePattern, i + 1);
-                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.SetColor(idx, GetLedConfigStatusColor(es))));
+                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.CreateWithColor(idx, GetLedConfigStatusColor(es))));
                 logger.LogInformation("Monitoring for color: {Name}", entityName);
 
                 entityName = string.Format(appConfig.Value.DimmerLedBlinkEntityNamePattern, i + 1);
-                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.SetBlink(idx, GetLedConfigBlink(es))));
+                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.CreateWithBlink(idx, GetLedConfigBlink(es))));
                 logger.LogInformation("Monitored for blink: {Name}", entityName);
             };
 
@@ -60,10 +60,9 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 {
                     logger.LogInformation("State change for {EntityId}, new state:{State}", sc?.Entity?.EntityId, sc?.New?.State);
 
-                    EntityState? newState = sc?.New;
-                    if (sc != null && newState != null && entityInputUpdateMap.TryGetValue(sc.Entity, out (int Index, Action<int, EntityState> UpdateCallback) r))
+                    if (sc?.New != null && entityInputUpdateMap.TryGetValue(sc.Entity, out (int Index, Action<int, EntityState> UpdateCallback) r))
                     {
-                        r.UpdateCallback(r.Index, newState);
+                        r.UpdateCallback(r.Index, sc?.New!);
                     }
                     else
                     {

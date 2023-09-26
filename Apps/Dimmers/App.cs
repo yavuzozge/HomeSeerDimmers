@@ -38,7 +38,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// Last LED input table that will be used for LED syncs
         /// </summary>
-        private LedInputTable lastInputTable = LedInputTable.CreateEmpty();
+        private LedInputTable lastInputTable = new();
 
         /// <summary>
         /// ctor
@@ -59,13 +59,13 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             IZWavePingManager zwavePingManager,
             IAppConfig<Config> appConfig)
         {
-            ArgumentNullException.ThrowIfNull(ha, nameof(ha));
-            ArgumentNullException.ThrowIfNull(scheduler, nameof(scheduler));
-            ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-            ArgumentNullException.ThrowIfNull(ledInputMonitor, nameof(ledInputMonitor));
-            ArgumentNullException.ThrowIfNull(dimmerDeviceManager, nameof(dimmerDeviceManager));
-            ArgumentNullException.ThrowIfNull(zwavePingManager, nameof(zwavePingManager));
-            ArgumentNullException.ThrowIfNull(appConfig, nameof(appConfig));
+            ArgumentNullException.ThrowIfNull(ha);
+            ArgumentNullException.ThrowIfNull(scheduler);
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(ledInputMonitor);
+            ArgumentNullException.ThrowIfNull(dimmerDeviceManager);
+            ArgumentNullException.ThrowIfNull(zwavePingManager);
+            ArgumentNullException.ThrowIfNull(appConfig);
 
             this.ha = ha;
             this.logger = logger;
@@ -109,7 +109,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         private void ScheduleLedSync(LedInputTable inputTable)
         {
             this.lastInputTable = inputTable;
-            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersAsync(this.lastInputTable, CancellationToken.None));
+            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersToAsync(this.lastInputTable, CancellationToken.None));
         }
 
         /// <summary>
@@ -119,7 +119,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// </summary>
         private void ScheduleLedReSync()
         {
-            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersAsync(this.lastInputTable, CancellationToken.None));
+            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersToAsync(this.lastInputTable, CancellationToken.None));
         }
 
         /// <summary>

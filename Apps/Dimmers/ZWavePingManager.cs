@@ -33,9 +33,9 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             IHomeAssistantRunner runner,
             IAppConfig<Config> appConfig)
         {
-            ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-            ArgumentNullException.ThrowIfNull(runner, nameof(runner));
-            ArgumentNullException.ThrowIfNull(appConfig, nameof(appConfig));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(runner);
+            ArgumentNullException.ThrowIfNull(appConfig);
 
             this.logger = logger;
             this.runner = runner;
@@ -82,7 +82,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             this.zwavePingDeviceMap = devices
                 .Select(d => (Device: d, this.appConfig.Value.ZWavePingDevices.FirstOrDefault(pd => string.Equals(pd.Name, d.Name, StringComparison.Ordinal))?.RefreshCommandClassId))
                 .Where(ping => ping.RefreshCommandClassId != null)
-                .Select(ping => (ping.Device, ping.RefreshCommandClassId.HasValue ? ping.RefreshCommandClassId.Value : ZWaveCommandClassId.NoOperation))
+                .Select(ping => (ping.Device, ping.RefreshCommandClassId ?? ZWaveCommandClassId.NoOperation))
                 .ToArray();
 
             foreach ((HaDevice device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)

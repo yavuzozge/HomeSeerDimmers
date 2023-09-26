@@ -33,15 +33,15 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             ILogger<DimmerSyncManager> logger,
             IHomeAssistantRunner runner)
         {
-            ArgumentNullException.ThrowIfNull(logger, nameof(logger));
-            ArgumentNullException.ThrowIfNull(runner, nameof(runner));
+            ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(runner);
 
             this.logger = logger;
             this.runner = runner;
         }
 
         /// <inheritdoc />
-        public async Task SyncDimmersAsync(LedInputTable input, CancellationToken cancellationToken)
+        public async Task SyncDimmersToAsync(LedInputTable input, CancellationToken cancellationToken)
         {
             IHomeAssistantConnection? connection = this.runner.CurrentConnection;
             if (connection == null)

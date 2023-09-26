@@ -14,6 +14,6 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="input">LED input table</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
-        Task SyncDimmersAsync(LedInputTable input, CancellationToken cancellationToken);
+        Task SyncDimmersToAsync(LedInputTable input, CancellationToken cancellationToken);
     }
 }

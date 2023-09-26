@@ -7,6 +7,8 @@
         <Nullable>enable</Nullable>
         <RootNamespace>Ozy.HomeSeerDimmers</RootNamespace>
         <UserSecretsId>2e493d24-ed4c-4a9d-be04-dd457758eeba</UserSecretsId>
+        <WarningLevel>9999</WarningLevel>
+        <TreatWarningsAsErrors>True</TreatWarningsAsErrors>
     </PropertyGroup>
     
     <ItemGroup>
