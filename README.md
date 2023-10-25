@@ -1,4 +1,7 @@
 # HomeSeer Dimmers
+
+[![.NET](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet.yml/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet.yml)
+
 The aim of this project is to manage HomeSeer dimmer LEDs from Home Assistant easily.
 
 The basic premise is to define some entities in Home Assistant (I typically use template entities) that represents what the color and blink state of the LEDs should be, 
