@@ -43,7 +43,7 @@ Here is the basic configuration steps:
     - name: "Dimmer LED 1 Blink"
     ...
 ```
-To see supported colors, pls refer to [LedStatusColor](Apps/Dimmers/LedStatusColor.cs) enum.
+To see supported colors, pls refer to [LedStatusColor](HomeSeerDimmers/Apps/Dimmers/LedStatusColor.cs) enum.
 
 4. Create 'settings.yaml' in the Apps/Dimmers directory, and set the configuration of the app to something like:
 ```YAML
@@ -53,7 +53,7 @@ Ozy.HomeSeerDimmers.Apps.Dimmers.Config:
   LedSyncInterval: 00:10:00
   ZWavePingInterval: 00:00:00 # disabled
 ```
-To see supported configuration items, see [Config](Apps/Dimmers/Config.cs)
+To see supported configuration items, see [Config](HomeSeerDimmers/Apps/Dimmers/Config.cs)
 
 5. Deploy the app to NetDaemon add-on. Don't forget to make the following configuration changes to the add-on:
 ```
