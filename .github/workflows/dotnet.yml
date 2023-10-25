@@ -23,6 +23,11 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build --no-restore --configuration Release
+    - name: Publish
+      uses: actions/upload-artifact@v2
+      with: 
+        name: HomeSeer-Dimmers-Download
+        path: ./HomeSeerDimmers/bin/Release/net7.0
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --configuration Release --no-build --verbosity normal
