@@ -3,7 +3,7 @@
   "isRoot": true,
   "tools": {
     "joysoftware.netdaemon.hassmodel.codegen": {
-      "version": "22.52.0",
+      "version": "23.38.0",
       "commands": [
         "nd-codegen"
       ]
