@@ -20,6 +20,20 @@ This project is created in C# using [NetDaemon](https://netdaemon.xyz/) and .NET
 Here is the basic configuration steps:
 1. Make sure that the HomeSeer dimmers are set to "status" mode. Pls refer to the dimmer docs  I recommend setting blink frequency to 500ms
 2. Configure [NetDaemon](https://netdaemon.xyz/). I use it as an HA add-on
+My `appsettings.json` that gets published to NetDaemon looks smt like follwing:
+```JSON
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Debug",
+      "Microsoft": "Warning"
+    }
+  },
+  "NetDaemon": {
+    "ApplicationConfigurationFolder": "./Apps"
+  },
+}
+```
 3. Define your entities to HA. Here are examples using templated enitites (in `template.yaml`):
 ```YAML
 - sensor:
