@@ -30,4 +30,4 @@ jobs:
         name: HomeSeer-Dimmers-Download
         path: ./HomeSeerDimmers/bin/Release/net7.0
     - name: Test
-      run: dotnet test --no-build --verbosity normal
+      run: dotnet test --configuration Release --no-build --verbosity normal
