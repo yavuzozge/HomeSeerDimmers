@@ -215,7 +215,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Collection of LED values</returns>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task<IReadOnlyList<(LedStatusColor color, LedBlink blink)>> GetZWaveDimmerLedValuesAsync(this IHomeAssistantConnection connection, HaDevice device, CancellationToken cancellationToken)
+        public static async Task<IReadOnlyList<(LedStatusColor color, LedBlink blink)>> GetZWaveDimmerLedValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
         {
             if (!device.TryGetZWaveNodeId(out int zwaveNodeId))
             {
@@ -259,7 +259,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task SetZWaveLedColorAsync(this IHomeAssistantConnection connection, HaDevice device, int index, LedStatusColor color, CancellationToken cancellationToken)
+        public static async Task SetZWaveLedColorAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int index, LedStatusColor color, CancellationToken cancellationToken)
         {
             if (!device.TryGetZWaveNodeId(out int _))
             {
@@ -292,7 +292,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task SetZWaveLedBlinkAsync(this IHomeAssistantConnection connection, HaDevice device, int index, LedBlink blink, CancellationToken cancellationToken)
+        public static async Task SetZWaveLedBlinkAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int index, LedBlink blink, CancellationToken cancellationToken)
         {
             if (!device.TryGetZWaveNodeId(out int _))
             {
@@ -325,7 +325,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="device">ZWave device</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task RefreshNodeValuesAsync(this IHomeAssistantConnection connection, HaDevice device, CancellationToken cancellationToken)
+        public static async Task RefreshNodeValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
         {
             if (!device.TryGetZWaveNodeId(out int _))
             {
@@ -348,7 +348,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="commandClassId">ZWave command class ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task RefreshNodeCcValuesAsync(this IHomeAssistantConnection connection, HaDevice device, ZWaveCommandClassId commandClassId, CancellationToken cancellationToken)
+        public static async Task RefreshNodeCcValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, ZWaveCommandClassId commandClassId, CancellationToken cancellationToken)
         {
             if (!device.TryGetZWaveNodeId(out int _))
             {

@@ -15,7 +15,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// A basic HA command class
         /// </summary>
-        private record BasicHaCommand : CommandMessage
+        public record BasicHaCommand : CommandMessage
         {
             /// <summary>
             /// ctor
@@ -28,15 +28,15 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <summary>
-        /// Gets the Home Assistant devices from Home Assistant device registry
+        /// Gets extended Home Assistant devices from Home Assistant device registry
         /// </summary>
         /// <param name="connection">Connection</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Collection of Home Assistant devices</returns>
-        public static async Task<IEnumerable<HaDevice>> GetDevicesAsync(this IHomeAssistantConnection connection, CancellationToken cancellationToken)
+        public static async Task<IEnumerable<HassDeviceExtended>> GetDevicesExtendedAsync(this IHomeAssistantConnection connection, CancellationToken cancellationToken)
         {
-            IReadOnlyCollection<HaDevice>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HaDevice>>(new BasicHaCommand("config/device_registry/list"), cancellationToken);
-            return devices ?? Enumerable.Empty<HaDevice>();
+            IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(new BasicHaCommand("config/device_registry/list"), cancellationToken);
+            return devices ?? Enumerable.Empty<HassDeviceExtended>();
         }
     }
 }

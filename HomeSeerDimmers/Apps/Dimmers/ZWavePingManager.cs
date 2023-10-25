@@ -19,7 +19,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         private readonly IAppConfig<Config> appConfig;
         private readonly IHomeAssistantRunner runner;
 
-        private IEnumerable<(HaDevice Device, ZWaveCommandClassId RefreshCommandClassId)> zwavePingDeviceMap = Enumerable.Empty<(HaDevice, ZWaveCommandClassId)>();
+        private IEnumerable<(HassDeviceExtended Device, ZWaveCommandClassId RefreshCommandClassId)> zwavePingDeviceMap = Enumerable.Empty<(HassDeviceExtended, ZWaveCommandClassId)>();
         private bool deviceDiscoveryCompleted = false;
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             }
 
             Stopwatch timer = Stopwatch.StartNew();
-            foreach ((HaDevice device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
+            foreach ((HassDeviceExtended device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
             {
                 await connection.RefreshNodeCcValuesAsync(device, refreshCommandClassId, cancellationToken);
             }
@@ -78,14 +78,14 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             this.logger.LogInformation("Discovering Z-Wave devices to ping:");
 
-            IEnumerable<HaDevice> devices = await connection.GetDevicesAsync(token);
+            IEnumerable<HassDeviceExtended> devices = await connection.GetDevicesExtendedAsync(token);
             this.zwavePingDeviceMap = devices
                 .Select(d => (Device: d, this.appConfig.Value.ZWavePingDevices.FirstOrDefault(pd => string.Equals(pd.Name, d.Name, StringComparison.Ordinal))?.RefreshCommandClassId))
                 .Where(ping => ping.RefreshCommandClassId != null)
                 .Select(ping => (ping.Device, ping.RefreshCommandClassId ?? ZWaveCommandClassId.NoOperation))
                 .ToArray();
 
-            foreach ((HaDevice device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
+            foreach ((HassDeviceExtended device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
             {
                 this.logger.LogInformation("  {Name}: {class}, {Manufacturer}, {Model}", device.Name, refreshCommandClassId, device.Manufacturer, device.Model);
             }
