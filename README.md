@@ -90,5 +90,5 @@ For supported configuration, see [Config](HomeSeerDimmers/Apps/Dimmers/Config.cs
 ```
     app_assembly: HomeSeerDimmers.dll
 ```
-5. Restart NetDaemon add-on. Don't forget to make the following configuration changes to the add-on in HA:
+5. Restart NetDaemon add-on.
 6. You are done, enjoy!
