@@ -1,9 +1,9 @@
-obj
-bin
-appsettings.json
-.vs
+**/obj/
+**/bin/
+/HomeSeerDimmers/appsettings.json
+/.vs
 *.gen
-.idea
+/.idea
 Properties/
-.vscode/
-/HomeSeerDimmers.csproj.user
+/.vscode/
+/HomeSeerDimmers/HomeSeerDimmers.csproj.user
