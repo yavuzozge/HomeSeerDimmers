@@ -5,7 +5,8 @@ using System.Text.Json.Serialization;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 {
     /// <summary>
-    /// Data class represeting a Home Assistant device
+    /// Data class represeting a Home Assistant device that captures additional properties
+    /// compared to <see cref="NetDaemon.Client.HomeAssistant.Model.HassDevice"/> such as identifiers
     /// </summary>
     /// <param name="Id"></param>
     /// <param name="AreaId"></param>
@@ -42,7 +43,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     //    "sw_version": "5.14",
     //    "via_device_id": "0a250010aa0b33a9cbf66a6cffed2403"
     //},
-    public record HaDevice(
+    public record HassDeviceExtended(
         [property: JsonPropertyName("id")] string Id,
         [property: JsonPropertyName("area_id")] string AreaId,
         [property: JsonPropertyName("name")] string Name,
@@ -52,9 +53,9 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         [property: JsonPropertyName("identifiers")] IList<IList<string>> Identifiers);
 
     /// <summary>
-    /// ZWave extensions to <see cref="HaDevice"/>
+    /// ZWave extensions to <see cref="HassDeviceExtended"/>
     /// </summary>
-    public static class HaDeviceZWaveExtensions
+    public static class HassDeviceExtendedZWaveExtensions
     {
         /// <summary>
         /// Returns ZWave node ID
@@ -62,7 +63,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="device">Home Assistant device</param>
         /// <param name="nodeId">ZWave node ID</param>
         /// <returns>True if return had succeeded, false otherwise</returns>
-        public static bool TryGetZWaveNodeId(this HaDevice device, out int nodeId)
+        public static bool TryGetZWaveNodeId(this HassDeviceExtended device, out int nodeId)
         {
             if (device == null)
             {

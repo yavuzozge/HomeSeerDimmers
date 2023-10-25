@@ -26,7 +26,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         private readonly ILogger<DimmerSyncManager> logger;
         private readonly IHomeAssistantRunner runner;
 
-        private IEnumerable<HaDevice> dimmerDevices = Enumerable.Empty<HaDevice>();
+        private IEnumerable<HassDeviceExtended> dimmerDevices = Enumerable.Empty<HassDeviceExtended>();
         private bool deviceDiscoveryCompleted = false;
 
         public DimmerSyncManager(
@@ -74,17 +74,17 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             this.logger.LogInformation("Discovering HomeSeer dimmers:");
 
-            IEnumerable<HaDevice> devices = (await connection.GetDevicesAsync(token)).ToArray();
+            IEnumerable<HassDeviceExtended> devices = (await connection.GetDevicesExtendedAsync(token)).ToArray();
 
             // HS-WD200+ => https://docs.homeseer.com/products/lighting/legacy-lighting/hs-wd200+
             // HS-WX300 (HS-WX300 is not tested) => https://docs.homeseer.com/products/lighting/hs-wx300
-            IEnumerable<HaDevice> dimmerDevices = devices
+            IEnumerable<HassDeviceExtended> dimmerDevices = devices
                 .Where(d => string.Equals("HomeSeer Technologies", d.Manufacturer, StringComparison.InvariantCultureIgnoreCase) &&
                     (string.Equals("HS-WD200+", d.Model, StringComparison.InvariantCultureIgnoreCase) ||
                     string.Equals("HS-WX300", d.Model, StringComparison.InvariantCultureIgnoreCase)))
                 .ToArray();
 
-            foreach (HaDevice device in dimmerDevices)
+            foreach (HassDeviceExtended device in dimmerDevices)
             {
                 this.logger.LogInformation("  device: {Name}, {Manufacturer}, {Model}", device.Name, device.Manufacturer, device.Model);
             }
@@ -104,7 +104,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             Stopwatch timer = Stopwatch.StartNew();
             SyncLedDimmerResult result = SyncLedDimmerResult.SyncSucceeded;
-            foreach (HaDevice device in this.dimmerDevices)
+            foreach (HassDeviceExtended device in this.dimmerDevices)
             {
                 SyncLedDimmerResult dimmerSyncResult = await this.SyncLedsOfADimmerAsync(connection, device, input, cancellationToken);
                 if (dimmerSyncResult != SyncLedDimmerResult.SyncSucceeded)
@@ -126,7 +126,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="input">LED input table</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Result of the sync</returns>
-        private async Task<SyncLedDimmerResult> SyncLedsOfADimmerAsync(IHomeAssistantConnection connection, HaDevice device, LedInputTable input, CancellationToken cancellationToken)
+        private async Task<SyncLedDimmerResult> SyncLedsOfADimmerAsync(IHomeAssistantConnection connection, HassDeviceExtended device, LedInputTable input, CancellationToken cancellationToken)
         {
             IReadOnlyList<(LedStatusColor color, LedBlink blink)>? deviceLedConfig = await connection.GetZWaveDimmerLedValuesAsync(device, cancellationToken);
             if (deviceLedConfig == null)
