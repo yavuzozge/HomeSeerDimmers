@@ -29,7 +29,7 @@
     </Target>
         
     <ItemGroup>
-        <PackageReference Include="JoySoftware.NetDaemon.AppModel" Version="23.38.0" />
+        <PackageReference Include="JoySoftware.NetDaemon.AppModel" Version="23.43.1" />
         <PackageReference Include="JoySoftware.NetDaemon.HassModel.Integration" Version="23.38.0" />
         <PackageReference Include="JoySoftware.NetDaemon.Runtime" Version="23.38.0" />
         <PackageReference Include="JoySoftware.NetDaemon.HassModel" Version="23.38.0" />
