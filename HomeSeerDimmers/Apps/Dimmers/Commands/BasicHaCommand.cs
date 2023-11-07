@@ -5,17 +5,17 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
     /// Connection extensions
     /// </summary>
-    public static class ConnectionExtensions
+    public static class CommandConnectionExtensions
     {
         /// <summary>
         /// A basic HA command class
         /// </summary>
-        public record BasicHaCommand : CommandMessage
+        private record BasicHaCommand : CommandMessage
         {
             /// <summary>
             /// ctor
@@ -35,7 +35,10 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <returns>Collection of Home Assistant devices</returns>
         public static async Task<IEnumerable<HassDeviceExtended>> GetDevicesExtendedAsync(this IHomeAssistantConnection connection, CancellationToken cancellationToken)
         {
-            IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(new BasicHaCommand("config/device_registry/list"), cancellationToken);
+            IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+                new BasicHaCommand("config/device_registry/list"),
+                cancellationToken);
+
             return devices ?? Enumerable.Empty<HassDeviceExtended>();
         }
     }

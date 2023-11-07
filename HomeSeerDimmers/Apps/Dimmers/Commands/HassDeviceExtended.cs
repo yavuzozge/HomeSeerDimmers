@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Text.Json.Serialization;
 
-namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
     /// Data class represeting a Home Assistant device that captures additional properties
@@ -97,6 +97,21 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             }
 
             return int.TryParse(splitted[1], out nodeId);
+        }
+
+        /// <summary>
+        /// Returns ZWave node ID or throws <see cref="InvalidZWaveDeviceException"/>
+        /// </summary>
+        /// <param name="device">Home Assistant device</param>
+        /// <returns>ZWave node ID</returns>
+        public static int GetZWaveNodeId(this HassDeviceExtended device)
+        {
+            if (!device.TryGetZWaveNodeId(out int zwaveNodeId))
+            {
+                throw new InvalidZWaveDeviceException();
+            }
+
+            return zwaveNodeId;
         }
     }
 }

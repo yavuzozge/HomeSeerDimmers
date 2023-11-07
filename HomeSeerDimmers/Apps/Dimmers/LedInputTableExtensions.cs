@@ -1,4 +1,6 @@
-﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer;
+
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 {
     /// <summary>
     /// Extension methods for <see cref="LedInputTable"/>

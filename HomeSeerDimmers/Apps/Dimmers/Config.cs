@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
+using System;
 using System.Collections.Generic;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers

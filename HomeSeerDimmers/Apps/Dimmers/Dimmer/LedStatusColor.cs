@@ -1,4 +1,4 @@
-﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer
 {
     /// <summary>
     /// HomeSeer LED status colors
