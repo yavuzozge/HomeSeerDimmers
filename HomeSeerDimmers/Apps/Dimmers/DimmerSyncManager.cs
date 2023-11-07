@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
-using Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer;
+using Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

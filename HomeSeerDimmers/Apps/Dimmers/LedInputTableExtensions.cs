@@ -1,4 +1,4 @@
-﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer;
+﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 {

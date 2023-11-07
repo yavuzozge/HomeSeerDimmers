@@ -64,7 +64,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
 
             // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":{"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}}"
-            ZwaveConfigSetResult? result = await connection.SendCommandAndReturnResponseAsync<SetZWaveConfigParameterHaCommand, ZwaveConfigSetResult>(
+            ZwaveConfigSetResult result = await connection.SendCommandAndReturnResponseAsync<SetZWaveConfigParameterHaCommand, ZwaveConfigSetResult>(
                 new SetZWaveConfigParameterHaCommand
                 {
                     DeviceId = device.Id,
@@ -72,13 +72,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                     PropertyKey = propertyKey,
                     Value = value
                 },
-                cancellationToken);
-
-            if (result == null)
-            {
-                throw new InvalidOperationException("Zwave config set result is null");
-            }
-
+                cancellationToken) ?? throw new InvalidOperationException("Zwave config set result is null");
+            
             if (result.Status == null)
             {
                 throw new InvalidOperationException("Zwave config set result status is null");

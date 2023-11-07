@@ -2,12 +2,12 @@ using FluentAssertions;
 using Moq;
 using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
-using static Ozy.HomeSeerDimmers.Apps.Dimmers.ConnectionExtensions;
+using static Ozy.HomeSeerDimmers.Apps.Dimmers.Commands.BasicCommandConnectionExtensions;
 
 namespace HomeSeerDimmerUnitTests
 {
     [TestClass]
-    public class ConnectionExtensionsTests
+    public class BasicCommandConnectionExtensionsTests
     {
         [TestMethod]
         public async Task GetDevicesExtendedAsyncCallsConnectionSuccesfully()

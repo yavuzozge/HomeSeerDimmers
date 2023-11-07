@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice
 {
     /// <summary>
     /// Extension methods for <see cref="IHomeAssistantConnection"/> for Z-Wave devices
@@ -51,12 +51,12 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Dimmer
             (LedStatusColor color, LedBlink blink)[] configs = new (LedStatusColor color, LedBlink blink)[7];
             for (int i = 0; i < configs.Length; ++i)
             {
-                if (!result.TryGetValue(CreateLedStatusColorConfigName(zwaveNodeId, i), out ZwaveConfigParameters? config) || config.TryGetEnumeratedValue(out LedStatusColor color))
+                if (!result.TryGetValue(CreateLedStatusColorConfigName(zwaveNodeId, i), out ZwaveConfigParameters? config) || !config.TryGetEnumeratedValue(out LedStatusColor color))
                 {
                     throw new InvalidOperationException($"Failed to parse LED color: {i} for device {device.Name}");
                 }
 
-                if (!result.TryGetValue(CreateLedStatusBlinkConfigName(zwaveNodeId, i), out config) || config.TryGetEnumeratedValue(out LedBlink blink))
+                if (!result.TryGetValue(CreateLedStatusBlinkConfigName(zwaveNodeId, i), out config) || !config.TryGetEnumeratedValue(out LedBlink blink))
                 {
                     throw new InvalidOperationException($"Failed to parse LED blink: {i} for device {device.Name}");
                 }

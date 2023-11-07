@@ -10,12 +10,12 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
     /// <summary>
     /// Connection extensions
     /// </summary>
-    public static class CommandConnectionExtensions
+    public static class BasicCommandConnectionExtensions
     {
         /// <summary>
         /// A basic HA command class
         /// </summary>
-        private record BasicHaCommand : CommandMessage
+        public record BasicHaCommand : CommandMessage
         {
             /// <summary>
             /// ctor
