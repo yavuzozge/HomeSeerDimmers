@@ -2,7 +2,7 @@
 using NetDaemon.AppModel;
 using NetDaemon.HassModel;
 using NetDaemon.HassModel.Entities;
-using Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice;
+using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System;
 using System.Collections.Generic;
 using System.Linq;

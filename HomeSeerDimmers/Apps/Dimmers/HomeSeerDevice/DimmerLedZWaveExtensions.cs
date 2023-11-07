@@ -5,10 +5,10 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
 {
     /// <summary>
-    /// Extension methods for <see cref="IHomeAssistantConnection"/> for Z-Wave devices
+    /// Extension methods for <see cref="IHomeAssistantConnection"/> for Homeseer dimmer devices
     /// </summary>
     public static class DimmerLedZWaveExtensions
     {

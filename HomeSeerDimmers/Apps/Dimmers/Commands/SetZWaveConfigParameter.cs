@@ -8,46 +8,46 @@ using System.Threading.Tasks;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
-    /// Extensions class for <see cref="IHomeAssistantConnection"/> for zwave_js/set_config_parameter command
+    /// Represents a Home Assistant command to set ZWave configuration parameters of a given device
     /// </summary>
-    public static class SetZWaveConfigParameterConnectionExtensions
+    public record SetZWaveConfigParameterHaCommand : CommandMessage
     {
-        /// <summary>
-        /// Represents a Home Assistant command to set ZWave configuration parameters of a given device
-        /// </summary>
-        private record SetZWaveConfigParameterHaCommand : CommandMessage
+        public SetZWaveConfigParameterHaCommand()
         {
-            public SetZWaveConfigParameterHaCommand()
-            {
-                Type = "zwave_js/set_config_parameter";
-            }
-
-            [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
-            [JsonPropertyName("property")] public int Property { get; init; }
-            [JsonPropertyName("property_key")] public int? PropertyKey { get; init; } = null;
-            [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+            Type = "zwave_js/set_config_parameter";
         }
 
-        /// <summary>
-        /// Represents a ZWave configuration result status
-        /// </summary>
-        /// <param name="Status"></param>
-        // ValueKind = Object : {"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}"
-        private record ZwaveConfigSetResultStatus(
-            [property: JsonPropertyName("status")] string Status
-        );
+        [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+        [JsonPropertyName("property")] public int Property { get; init; }
+        [JsonPropertyName("property_key")] public int? PropertyKey { get; init; } = null;
+        [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+    }
 
-        /// <summary>
-        /// Represents a ZWave configuration result
-        /// </summary>
-        /// <param name="ValueId"></param>
-        /// <param name="Status"></param>
-        // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":{"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}}"
-        private record ZwaveConfigSetResult(
-            [property: JsonPropertyName("value_id")] string ValueId,
-            [property: JsonPropertyName("status")] ZwaveConfigSetResultStatus Status
-        );
+    /// <summary>
+    /// Represents a ZWave configuration result status
+    /// </summary>
+    /// <param name="Status"></param>
+    // ValueKind = Object : {"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}"
+    public record ZwaveConfigSetResultStatus(
+        [property: JsonPropertyName("status")] string Status
+    );
 
+    /// <summary>
+    /// Represents a ZWave configuration result
+    /// </summary>
+    /// <param name="ValueId"></param>
+    /// <param name="Status"></param>
+    // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":{"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}}"
+    public record ZwaveConfigSetResult(
+        [property: JsonPropertyName("value_id")] string ValueId,
+        [property: JsonPropertyName("status")] ZwaveConfigSetResultStatus Status
+    );
+
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    {
         /// <summary>
         /// Sets config parameter of a ZWave device
         /// </summary>

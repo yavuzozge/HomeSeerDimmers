@@ -8,25 +8,25 @@ using System.Threading.Tasks;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
-    /// Connection extensions
+    /// A basic HA command class
     /// </summary>
-    public static class BasicCommandConnectionExtensions
+    public record BasicHaCommand : CommandMessage
     {
         /// <summary>
-        /// A basic HA command class
+        /// ctor
         /// </summary>
-        public record BasicHaCommand : CommandMessage
+        /// <param name="type">Command type</param>
+        public BasicHaCommand(string type)
         {
-            /// <summary>
-            /// ctor
-            /// </summary>
-            /// <param name="type">Command type</param>
-            public BasicHaCommand(string type)
-            {
-                Type = type;
-            }
+            Type = type;
         }
+    }
 
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    {
         /// <summary>
         /// Gets extended Home Assistant devices from Home Assistant device registry
         /// </summary>

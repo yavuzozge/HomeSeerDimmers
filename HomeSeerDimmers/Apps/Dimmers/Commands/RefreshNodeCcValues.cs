@@ -7,27 +7,27 @@ using System.Threading.Tasks;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
-    /// Extensions class for <see cref="IHomeAssistantConnection"/> for zwave_js/refresh_node_cc_values command
+    /// Represents a Home Assistant command to refresh Command Class values of a ZWave device
     /// </summary>
-    public static class RefreshNodeCcValuesConnectionExtensions
+    /// <remarks>
+    /// See https://github.com/home-assistant/core/blob/dev/homeassistant/components/zwave_js/api.py
+    /// </remarks>
+    public record RefreshNodeCcValuesHaCommand : CommandMessage
     {
-        /// <summary>
-        /// Represents a Home Assistant command to refresh Command Class values of a ZWave device
-        /// </summary>
-        /// <remarks>
-        /// See https://github.com/home-assistant/core/blob/dev/homeassistant/components/zwave_js/api.py
-        /// </remarks>
-        private record RefreshNodeCcValuesHaCommand : CommandMessage
+        public RefreshNodeCcValuesHaCommand()
         {
-            public RefreshNodeCcValuesHaCommand()
-            {
-                Type = "zwave_js/refresh_node_cc_values";
-            }
-
-            [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
-            [JsonPropertyName("command_class_id")] public int CommandClassId { get; init; }
+            Type = "zwave_js/refresh_node_cc_values";
         }
 
+        [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+        [JsonPropertyName("command_class_id")] public int CommandClassId { get; init; }
+    }
+
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    {
         /// <summary>
         /// Refreshes command class values of a ZWave device
         /// </summary>

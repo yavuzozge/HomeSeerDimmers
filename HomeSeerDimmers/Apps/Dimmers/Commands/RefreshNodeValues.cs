@@ -6,24 +6,27 @@ using System.Threading.Tasks;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
-    public static class RefreshNodeCcValuesHaCommandConnectionExtensions
+    /// <summary>
+    /// Represents a Home Assistant command to refresh ZWave device values
+    /// </summary>
+    /// <remarks>
+    /// See https://github.com/home-assistant/core/blob/dev/homeassistant/components/zwave_js/api.py
+    /// </remarks>
+    public record RefreshNodeValuesHaCommand : CommandMessage
     {
-        /// <summary>
-        /// Represents a Home Assistant command to refresh ZWave device values
-        /// </summary>
-        /// <remarks>
-        /// See https://github.com/home-assistant/core/blob/dev/homeassistant/components/zwave_js/api.py
-        /// </remarks>
-        private record RefreshNodeValuesHaCommand : CommandMessage
+        public RefreshNodeValuesHaCommand()
         {
-            public RefreshNodeValuesHaCommand()
-            {
-                Type = "zwave_js/refresh_node_values";
-            }
-
-            [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+            Type = "zwave_js/refresh_node_values";
         }
 
+        [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    { 
         /// <summary>
         /// Refreshes node values of a ZWave device
         /// </summary>

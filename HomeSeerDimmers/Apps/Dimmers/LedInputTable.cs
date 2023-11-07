@@ -1,4 +1,4 @@
-﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.DimmerDevice;
+﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System.Collections.Immutable;
 using System.Linq;
 

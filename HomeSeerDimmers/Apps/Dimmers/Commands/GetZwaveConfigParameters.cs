@@ -8,26 +8,26 @@ using System.Threading.Tasks;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
-    /// Extensions class for <see cref="IHomeAssistantConnection"/> for zwave_js/get_config_parameters command
+    /// Represents a Home Assistant command to get ZWave configuration parameters of a given device
     /// </summary>
-    public static class GetZWaveConfigParametersConnectionExtensions
+    public record GetZWaveConfigParametersHaCommand : CommandMessage
     {
-        /// <summary>
-        /// Represents a Home Assistant command to get ZWave configuration parameters of a given device
-        /// </summary>
-        private record GetZWaveConfigParametersHaCommand : CommandMessage
+        public GetZWaveConfigParametersHaCommand()
         {
-            public GetZWaveConfigParametersHaCommand()
-            {
-                Type = "zwave_js/get_config_parameters";
-            }
-
-            /// <summary>
-            /// Device ID
-            /// </summary>
-            [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+            Type = "zwave_js/get_config_parameters";
         }
 
+        /// <summary>
+        /// Device ID
+        /// </summary>
+        [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    {
         /// <summary>
         /// Gets config parameteters of a ZWave device
         /// </summary>

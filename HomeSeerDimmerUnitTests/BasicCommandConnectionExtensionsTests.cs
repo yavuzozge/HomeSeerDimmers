@@ -2,7 +2,7 @@ using FluentAssertions;
 using Moq;
 using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
-using static Ozy.HomeSeerDimmers.Apps.Dimmers.Commands.BasicCommandConnectionExtensions;
+using static Ozy.HomeSeerDimmers.Apps.Dimmers.Commands.CommandConnectionExtensions;
 
 namespace HomeSeerDimmerUnitTests
 {
