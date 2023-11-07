@@ -1,4 +1,4 @@
-﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
     /// ZWave Command class Ids

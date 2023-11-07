@@ -5,28 +5,28 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Ozy.HomeSeerDimmers.Apps.Dimmers
+namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 {
     /// <summary>
-    /// Connection extensions
+    /// A basic HA command class
     /// </summary>
-    public static class ConnectionExtensions
+    public record BasicHaCommand : CommandMessage
     {
         /// <summary>
-        /// A basic HA command class
+        /// ctor
         /// </summary>
-        public record BasicHaCommand : CommandMessage
+        /// <param name="type">Command type</param>
+        public BasicHaCommand(string type)
         {
-            /// <summary>
-            /// ctor
-            /// </summary>
-            /// <param name="type">Command type</param>
-            public BasicHaCommand(string type)
-            {
-                Type = type;
-            }
+            Type = type;
         }
+    }
 
+    /// <summary>
+    /// Command connection extensions
+    /// </summary>
+    public static partial class CommandConnectionExtensions
+    {
         /// <summary>
         /// Gets extended Home Assistant devices from Home Assistant device registry
         /// </summary>
@@ -35,7 +35,10 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <returns>Collection of Home Assistant devices</returns>
         public static async Task<IEnumerable<HassDeviceExtended>> GetDevicesExtendedAsync(this IHomeAssistantConnection connection, CancellationToken cancellationToken)
         {
-            IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(new BasicHaCommand("config/device_registry/list"), cancellationToken);
+            IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+                new BasicHaCommand("config/device_registry/list"),
+                cancellationToken);
+
             return devices ?? Enumerable.Empty<HassDeviceExtended>();
         }
     }

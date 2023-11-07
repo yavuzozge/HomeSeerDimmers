@@ -1,4 +1,5 @@
-﻿using System.Collections.Immutable;
+﻿using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers
