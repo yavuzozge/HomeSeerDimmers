@@ -28,7 +28,7 @@ This project is created in C# and .NET 7 using [NetDaemon](https://netdaemon.xyz
 
 ## Getting started
 
-1. Install NetDaemon and configure it -- see their website for details [NetDaemon](https://netdaemon.xyz/). I use it as an HA add-on.
+1. Install NetDaemon runtime and configure it -- see their website for details [NetDaemon](https://netdaemon.xyz/). I installed the runtime as an [HA add-on](https://netdaemon.xyz/docs/v3/started/installation/#deploy-as-home-assistant-add-on)
 2. Make sure that the HomeSeer dimmers are set to "status" mode. Pls refer to the dimmer docs  I recommend setting blink frequency to 500ms. [TBD -- include this to the project]
 3. Deploy the release binaries to NetDaemon directory. You can find the latest release [here](https://github.com/yavuzozge/HomeSeerDimmers/releases) or compile it yourself.
 4. Modify `appsettings.json` of NetDaemon -- mine looks smt like following:
