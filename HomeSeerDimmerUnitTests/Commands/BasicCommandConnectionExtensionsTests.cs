@@ -4,8 +4,11 @@ using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using static Ozy.HomeSeerDimmers.Apps.Dimmers.Commands.CommandConnectionExtensions;
 
-namespace HomeSeerDimmerUnitTests
+namespace HomeSeerDimmerUnitTests.Commands
 {
+    /// <summary>
+    /// Unit tests for <see cref="CommandConnectionExtensions"/>
+    /// </summary>
     [TestClass]
     public class BasicCommandConnectionExtensionsTests
     {

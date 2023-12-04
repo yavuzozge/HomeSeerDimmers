@@ -29,14 +29,24 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="appConfig">App configuration</param>
         public LedInputMonitor(IHaContext ha, ILogger<LedInputMonitor> logger, IAppConfig<Config> appConfig)
         {
-            ArgumentNullException.ThrowIfNull(ha);
-            ArgumentNullException.ThrowIfNull(logger);
-
             this.logger = logger;
 
             LedInputTable table = new();
 
             logger.LogInformation("Setting up LED input monitoring table");
+
+            if (string.IsNullOrWhiteSpace(appConfig.Value.DimmerLedColorEntityNamePattern))
+            {
+                throw new ArgumentException($"{nameof(Config.DimmerLedColorEntityNamePattern)} cannot be emptry or whitespace", nameof(appConfig));
+            }
+            if (string.IsNullOrWhiteSpace(appConfig.Value.DimmerLedBlinkEntityNamePattern))
+            {
+                throw new ArgumentException($"{nameof(Config.DimmerLedBlinkEntityNamePattern)} cannot be emptry or whitespace", nameof(appConfig));
+            }
+            if(string.Equals(appConfig.Value.DimmerLedColorEntityNamePattern, appConfig.Value.DimmerLedBlinkEntityNamePattern, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"{nameof(Config.DimmerLedBlinkEntityNamePattern)} should have a different value than {nameof(Config.DimmerLedBlinkEntityNamePattern)}", nameof(appConfig));
+            }
 
             // Create entities and a lookup table that would update the table above
             Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)> entityInputUpdateMap = new();
