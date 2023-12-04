@@ -6,6 +6,7 @@ using NetDaemon.HassModel;
 using NetDaemon.HassModel.Entities;
 using Ozy.HomeSeerDimmers.Apps.Dimmers;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
+using System.Collections.Immutable;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 
@@ -63,30 +64,17 @@ namespace HomeSeerDimmerUnitTests
         [TestMethod]
         public void CtorSucceedsAndSetsUpInitialValues()
         {
-            // Arrange
-            this.config.DimmerLedColorEntityNamePattern = "sensor.dimmer_led_{0}_color";
-            this.config.DimmerLedBlinkEntityNamePattern = "binary_sensor.dimmer_led_{0}_blink";
-
-            Subject<StateChange> stateChanges = new();
-            this.mockHaContext.Setup(m => m.StateAllChanges()).Returns(stateChanges);
-
-            // Setup initial entities and their values
-            for (int i = 0; i < 7; ++i)
+            // Arrange & Act
+            List<LedInputTable> capture = this.TestAllInputTableChanges(stateChanges =>
             {
-                this.mockHaContext.Setup(m => m.GetState($"sensor.dimmer_led_{i}_color")).Returns(new EntityState());
-                stateChanges.OnNext(new StateChange(new Entity(this.mockHaContext.Object, $"sensor.dimmer_led_{i}_color"), @old: null, @new: new EntityState { State = "off" }));
-
-                this.mockHaContext.Setup(m => m.GetState($"binary_sensor.dimmer_led_{i}_blink")).Returns(new EntityState());
-                stateChanges.OnNext(new StateChange(new Entity(this.mockHaContext.Object, $"binary_sensor.dimmer_led_{i}_blink"), @old: null, @new: new EntityState { State = "off" }));
-            }
-
-            // Act
-            LedInputMonitor monitor = new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object);
+                // Don't emit anything since we are only testing ctor
+            });
 
             // Assert
-            LedInputTable initialTable = monitor.AllInputTableChanges.FirstAsync().Wait();
-            initialTable.Colors.Should().BeEquivalentTo(Enumerable.Repeat(LedStatusColor.Off, 7));
-            initialTable.Blinks.Should().BeEquivalentTo(Enumerable.Repeat(LedBlink.Off, 7));
+            capture.Should().BeEquivalentTo(new[] 
+            { 
+                new LedInputTable(Enumerable.Repeat(LedStatusColor.Off, 7).ToImmutableArray(), Enumerable.Repeat(LedBlink.Off, 7).ToImmutableArray())
+            });
         }
 
         [TestMethod]
@@ -103,8 +91,9 @@ namespace HomeSeerDimmerUnitTests
 
             // Assert
             capture.Should().HaveCount(3);
-            capture[2].Colors.Should().BeEquivalentTo(new[] { LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Red, LedStatusColor.Off });
-            capture[2].Blinks.Should().BeEquivalentTo(new[] { LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.On, LedBlink.Off });
+            capture.Last().Should().BeEquivalentTo(new LedInputTable(
+                ImmutableArray.Create(new LedStatusColor[] { LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Red, LedStatusColor.Off }),
+                ImmutableArray.Create(new[] { LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.On, LedBlink.Off })));
         }
 
         [TestMethod]
@@ -132,8 +121,10 @@ namespace HomeSeerDimmerUnitTests
             });
 
             // Assert
-            capture.Last().Colors.Should().BeEquivalentTo(new[] { LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off });
-            capture.Last().Blinks.Should().BeEquivalentTo(new[] { LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off });
+            capture.Should().HaveCount(5);
+            capture.Last().Should().BeEquivalentTo(new LedInputTable(
+                ImmutableArray.Create(new LedStatusColor[] { LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off }),
+                ImmutableArray.Create(new[] { LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off })));
         }
 
         private List<LedInputTable> TestAllInputTableChanges(Action<IObserver<StateChange>> doEmits)
@@ -154,9 +145,9 @@ namespace HomeSeerDimmerUnitTests
                 stateChanges.OnNext(new StateChange(new Entity(this.mockHaContext.Object, $"binary_sensor.dimmer_led_{i}_blink"), @old: null, @new: new EntityState { State = "off" }));
             }
 
-            LedInputMonitor monitor = new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object);
+            LedInputMonitor monitor = new(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object);
 
-            List<LedInputTable> capture = new List<LedInputTable>();
+            List<LedInputTable> capture = new();
             using (monitor.AllInputTableChanges.Subscribe(t => capture.Add(t)))
             {
                 doEmits(stateChanges);
