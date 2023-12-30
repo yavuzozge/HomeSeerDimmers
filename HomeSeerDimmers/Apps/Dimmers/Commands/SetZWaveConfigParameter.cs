@@ -98,7 +98,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <exception cref="InvalidOperationException">Thrown when the set operation fails</exception>
         public static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int propertyKey, string value, CancellationToken cancellationToken)
         {
-            await connection.SetZWaveConfigParameterAsync(device, property, propertyKey, value, cancellationToken);
+            await connection.SetZWaveConfigParameterAsync(device, property, (int?)propertyKey, value, cancellationToken);
         }
 
         /// <summary>

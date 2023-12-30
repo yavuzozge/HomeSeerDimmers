@@ -9,7 +9,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     public interface IZWavePingManager
     {
         /// <summary>
-        /// Pings Z-Wave devices that are configured in <see cref="Config"/>
+        /// Pings discovered Z-Wave devices
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>

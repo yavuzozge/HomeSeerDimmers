@@ -27,7 +27,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// Used to serialize asynchronous task executions so that we can make sure that 
         /// the calls to Z-Wave devices are done one operation group at a time
         /// </summary>
-        private readonly Subject<Func<Task>> zwaveOprationsSerialExecutor = new();
+        private readonly Subject<Func<Task>> zwaveOperationsSerialExecutor = new();
 
         /// <summary>
         /// Subject that connects to LED input monitor to receive input table updates
@@ -73,7 +73,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             this.dimmerDeviceManager = dimmerDeviceManager;
             this.zwavePingManager = zwavePingManager;
 
-            _ = this.zwaveOprationsSerialExecutor.SubscribeAsync(cb => cb(), this.logger);
+            _ = this.zwaveOperationsSerialExecutor.SubscribeAsync(cb => cb(), this.logger);
 
             _ = this.inputTableSubject.Subscribe(this.ScheduleLedSync);
 
@@ -100,7 +100,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="createTask">Delegate that creates the Z-Wave operation task</param>
         private void ScheduleZwaveOperation(Func<Task> createTask)
         {
-            this.zwaveOprationsSerialExecutor.OnNext(createTask);
+            this.zwaveOperationsSerialExecutor.OnNext(createTask);
         }
 
         /// <summary>
@@ -115,7 +115,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// Schedules all the LEDs to be resynced using the last input
         /// This is primarily to support to recover from the cases when the Z-Wave updates were failed
-        /// (due to ZWAve network congestion ...etc.)
+        /// (due to Z-Wave network congestion ...etc.)
         /// </summary>
         private void ScheduleLedReSync()
         {
