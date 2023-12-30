@@ -27,7 +27,10 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="ha">Home assistant context</param>
         /// <param name="logger">Logger</param>
         /// <param name="appConfig">App configuration</param>
-        public LedInputMonitor(IHaContext ha, ILogger<LedInputMonitor> logger, IAppConfig<Config> appConfig)
+        public LedInputMonitor(
+            IHaContext ha, 
+            ILogger<LedInputMonitor> logger, 
+            IAppConfig<Config> appConfig)
         {
             this.logger = logger;
 

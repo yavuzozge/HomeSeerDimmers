@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using NetDaemon.AppModel;
 using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
@@ -25,20 +26,48 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             Retry
         }
 
+        /// <summary>
+        /// logger
+        /// </summary>
         private readonly ILogger<DimmerSyncManager> logger;
+
+        /// <summary>
+        /// App configuration
+        /// </summary>
+        private readonly IAppConfig<Config> appConfig;
+
+        /// <summary>
+        /// Home assistant connection runner
+        /// </summary>
         private readonly IHomeAssistantRunner runner;
 
+        /// <summary>
+        /// Discovered dimmer devices
+        /// </summary>
         private IEnumerable<HassDeviceExtended> dimmerDevices = Enumerable.Empty<HassDeviceExtended>();
-        private bool deviceDiscoveryCompleted = false;
 
+        /// <summary>
+        /// When the next discovery should be done (relative to system start time)
+        /// </summary>
+        private TimeSpan nextDiscoveryTime = TimeSpan.MinValue;
+
+        /// <summary>
+        /// ctor
+        /// </summary>
+        /// <param name="logger">Logger</param>
+        /// <param name="appConfig">App configuration</param>
+        /// <param name="runner">Home assistant connection runner</param>
         public DimmerSyncManager(
             ILogger<DimmerSyncManager> logger,
+            IAppConfig<Config> appConfig,
             IHomeAssistantRunner runner)
         {
             ArgumentNullException.ThrowIfNull(logger);
+            ArgumentNullException.ThrowIfNull(appConfig);
             ArgumentNullException.ThrowIfNull(runner);
 
             this.logger = logger;
+            this.appConfig = appConfig;
             this.runner = runner;
         }
 
@@ -52,9 +81,12 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 return;
             }
 
-            if (!this.deviceDiscoveryCompleted)
+            TimeSpan sinceSystemStart = TimeSpan.FromTicks(Environment.TickCount);
+            if (this.nextDiscoveryTime <= sinceSystemStart)
             {
                 await this.DiscoverDimmersAsync(connection, cancellationToken);
+
+                this.nextDiscoveryTime = sinceSystemStart + this.appConfig.Value.ZWaveDevicesDiscoveryValidity;
             }
 
             SyncLedDimmerResult result = await this.SyncLedsOfDiscoveredDimmersAsync(connection, input, cancellationToken);
@@ -92,7 +124,6 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             }
 
             this.dimmerDevices = dimmerDevices;
-            this.deviceDiscoveryCompleted = true;
         }
 
         /// <summary>

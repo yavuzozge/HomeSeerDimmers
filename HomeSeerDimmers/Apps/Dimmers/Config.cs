@@ -40,12 +40,19 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         public string DimmerLedBlinkEntityNamePattern { get; set; } = string.Empty;
 
         /// <summary>
-        /// LED sync interval (set zero to disable)
+        /// The amount of time the last Z-Wave device discovery done will be used.
+        /// Once this time elapses, a new discovery will take place.
+        /// Zero means rediscovery with every Z0-Wave sync
+        /// </summary>
+        public TimeSpan ZWaveDevicesDiscoveryValidity { get; set; }
+
+        /// <summary>
+        /// Interval for LED sync (set zero to disable)
         /// </summary>
         public TimeSpan LedSyncInterval { get; set; }
 
         /// <summary>
-        /// Z-Wave device ping interval (set zero to disable)
+        /// Interval for Z-Wave device ping (set zero to disable)
         /// Used with <see cref="ZWavePingDevices"/>
         /// </summary>
         public TimeSpan ZWavePingInterval { get; set; }
