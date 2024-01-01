@@ -70,7 +70,7 @@ This project is created in C# and .NET 8 using [NetDaemon](https://netdaemon.xyz
     - name: "Dimmer LED 1 Blink"
     ...
 ```
-% endraw %}
+{% endraw %}
 To see supported colors, pls refer to [LedStatusColor](HomeSeerDimmers/Apps/Dimmers/HomeSeerDevice/LedStatusColor.cs) enum.
 
 6. Create 'settings.yaml' in the Apps/Dimmers directory, and set the configuration of the app to something like:
