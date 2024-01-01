@@ -47,6 +47,7 @@ This project is created in C# and .NET 8 using [NetDaemon](https://netdaemon.xyz
 }
 ```
 5. Define your sensors in HA -- one sensor for each LED color and blink status. Below are some examples using templated enitites (in `template.yaml`):
+{% raw %}
 ```YAML
 - sensor:
     - name: "Dimmer LED 7 Color"
@@ -69,6 +70,7 @@ This project is created in C# and .NET 8 using [NetDaemon](https://netdaemon.xyz
     - name: "Dimmer LED 1 Blink"
     ...
 ```
+% endraw %}
 To see supported colors, pls refer to [LedStatusColor](HomeSeerDimmers/Apps/Dimmers/HomeSeerDevice/LedStatusColor.cs) enum.
 
 6. Create 'settings.yaml' in the Apps/Dimmers directory, and set the configuration of the app to something like:
