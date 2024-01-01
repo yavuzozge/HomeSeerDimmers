@@ -73,7 +73,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                     Value = value
                 },
                 cancellationToken) ?? throw new InvalidOperationException("Zwave config set result is null");
-            
+
             if (result.Status == null)
             {
                 throw new InvalidOperationException("Zwave config set result status is null");

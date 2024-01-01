@@ -71,8 +71,8 @@ namespace HomeSeerDimmerUnitTests
             });
 
             // Assert
-            capture.Should().BeEquivalentTo(new[] 
-            { 
+            capture.Should().BeEquivalentTo(new[]
+            {
                 new LedInputTable(Enumerable.Repeat(LedStatusColor.Off, 7).ToImmutableArray(), Enumerable.Repeat(LedBlink.Off, 7).ToImmutableArray())
             });
         }

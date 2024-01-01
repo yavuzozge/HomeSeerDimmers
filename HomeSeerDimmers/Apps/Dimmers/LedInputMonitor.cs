@@ -28,8 +28,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="logger">Logger</param>
         /// <param name="appConfig">App configuration</param>
         public LedInputMonitor(
-            IHaContext ha, 
-            ILogger<LedInputMonitor> logger, 
+            IHaContext ha,
+            ILogger<LedInputMonitor> logger,
             IAppConfig<Config> appConfig)
         {
             this.logger = logger;
@@ -46,17 +46,17 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             {
                 throw new ArgumentException($"{nameof(Config.DimmerLedBlinkEntityNamePattern)} cannot be emptry or whitespace", nameof(appConfig));
             }
-            if(string.Equals(appConfig.Value.DimmerLedColorEntityNamePattern, appConfig.Value.DimmerLedBlinkEntityNamePattern, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(appConfig.Value.DimmerLedColorEntityNamePattern, appConfig.Value.DimmerLedBlinkEntityNamePattern, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"{nameof(Config.DimmerLedBlinkEntityNamePattern)} should have a different value than {nameof(Config.DimmerLedBlinkEntityNamePattern)}", nameof(appConfig));
             }
 
             // Create entities and a lookup table that would update the table above
-            Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)> entityInputUpdateMap = new();
+            Dictionary<Entity, (int Index, Action<int, EntityState> UpdateCallback)> entityInputUpdateMap = [];
             for (int i = 0; i < LedInputTable.NumberOfLeds; ++i)
             {
                 string entityName = string.Format(appConfig.Value.DimmerLedColorEntityNamePattern, i + 1);
-                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.CreateWithColor(idx, GetLedConfigStatusColor(es))));
+                entityInputUpdateMap.Add(new Entity(ha, entityName), (i, (idx, es) => table = table.CreateWithColor(idx, this.GetLedConfigStatusColor(es))));
                 logger.LogInformation("Monitoring for color: {Name}", entityName);
 
                 entityName = string.Format(appConfig.Value.DimmerLedBlinkEntityNamePattern, i + 1);
@@ -113,7 +113,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         private LedStatusColor GetLedConfigStatusColor(EntityState state)
         {
             // Special case entity being unavailable as color 'off'
-            if (string.Equals(state.State, "unavailable",StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(state.State, "unavailable", StringComparison.OrdinalIgnoreCase))
             {
                 return LedStatusColor.Off;
             }
