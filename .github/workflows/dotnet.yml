@@ -25,9 +25,9 @@ jobs:
     - name: Build
       run: dotnet build --no-restore --configuration Release
     - name: Publish
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with: 
         name: HomeSeer-Dimmers-Download
-        path: ./HomeSeerDimmers/bin/Release/net7.0
+        path: ./HomeSeerDimmers/bin/Release/net8.0
     - name: Test
       run: dotnet test --configuration Release --no-build --verbosity normal
