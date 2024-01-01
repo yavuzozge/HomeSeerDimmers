@@ -26,7 +26,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
     /// Command connection extensions
     /// </summary>
     public static partial class CommandConnectionExtensions
-    { 
+    {
         /// <summary>
         /// Refreshes node values of a ZWave device
         /// </summary>

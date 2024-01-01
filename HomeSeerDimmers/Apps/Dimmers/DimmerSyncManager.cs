@@ -81,7 +81,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 return;
             }
 
-            TimeSpan sinceSystemStart = TimeSpan.FromTicks(Environment.TickCount);
+            TimeSpan sinceSystemStart = TimeSpan.FromMilliseconds(Environment.TickCount64);
             if (this.nextDiscoveryTime <= sinceSystemStart)
             {
                 await this.DiscoverDimmersAsync(connection, cancellationToken);
