@@ -1,9 +1,9 @@
 using Microsoft.Extensions.Hosting;
 using NetDaemon.AppModel;
-using NetDaemon.Extensions.Logging;
 using NetDaemon.Extensions.Scheduler;
 using NetDaemon.Extensions.Tts;
 using NetDaemon.Runtime;
+using Ozy.HomeSeerDimmers;
 using Ozy.HomeSeerDimmers.Apps.Dimmers;
 using System;
 using System.Reactive.Linq;
@@ -15,7 +15,7 @@ try
 {
     await Host.CreateDefaultBuilder(args)
         .UseNetDaemonAppSettings()
-        .UseNetDaemonDefaultLogging()
+        .UseCustomLogging()
         .UseNetDaemonRuntime()
         .UseNetDaemonTextToSpeech()
         .ConfigureServices((_, services) =>
