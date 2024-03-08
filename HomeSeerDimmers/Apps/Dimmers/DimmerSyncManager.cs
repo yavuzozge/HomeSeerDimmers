@@ -5,6 +5,7 @@ using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -27,6 +28,22 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <summary>
+        /// The manufacturer string used fro Homeseer devices
+        /// </summary>
+        private const string HomeseerManufacturer = "HomeSeer Technologies";
+
+        /// <summary>
+        /// The supported Homeseer dimmer models
+        /// </summary>
+        private static readonly IImmutableSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(
+            StringComparer.InvariantCulture,
+            new[]
+            {
+                "HS-WD200+", // => https://docs.homeseer.com/products/lighting/legacy-lighting/hs-wd200+
+                "HS-WX300" // => https://docs.homeseer.com/products/lighting/hs-wx300
+            });
+
+        /// <summary>
         /// logger
         /// </summary>
         private readonly ILogger<DimmerSyncManager> logger;
@@ -44,7 +61,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// Discovered dimmer devices
         /// </summary>
-        private IEnumerable<HassDeviceExtended> dimmerDevices = Enumerable.Empty<HassDeviceExtended>();
+        private ImmutableArray<HassDeviceExtended> dimmerDevices = [];
 
         /// <summary>
         /// When the next discovery should be done (relative to system start time)
@@ -108,15 +125,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             this.logger.LogInformation("Discovering HomeSeer dimmers:");
 
-            IEnumerable<HassDeviceExtended> devices = (await connection.GetDevicesExtendedAsync(token)).ToArray();
-
-            // HS-WD200+ => https://docs.homeseer.com/products/lighting/legacy-lighting/hs-wd200+
-            // HS-WX300 (HS-WX300 is not tested) => https://docs.homeseer.com/products/lighting/hs-wx300
-            IEnumerable<HassDeviceExtended> dimmerDevices = devices
-                .Where(d => string.Equals("HomeSeer Technologies", d.Manufacturer, StringComparison.InvariantCultureIgnoreCase) &&
-                    (string.Equals("HS-WD200+", d.Model, StringComparison.InvariantCultureIgnoreCase) ||
-                    string.Equals("HS-WX300", d.Model, StringComparison.InvariantCultureIgnoreCase)))
-                .ToArray();
+            ImmutableArray<HassDeviceExtended> dimmerDevices =
+                (await connection.GetDevicesExtendedAsync(token))
+                    .Where(d => string.Equals(HomeseerManufacturer, d.Manufacturer, StringComparison.InvariantCultureIgnoreCase)
+                        && SupportedHomeseerDimmerModels.Contains(d.Model))
+                    .ToImmutableArray();
 
             foreach (HassDeviceExtended device in dimmerDevices)
             {
@@ -175,7 +188,15 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 LedStatusColor newColor = input.Colors[i];
                 LedBlink newBlink = input.Blinks[i];
 
-                if (newColor != deviceLedConfig[i].color)
+                if (newColor == deviceLedConfig[i].color)
+                {
+                    this.logger.LogInformation(
+                        "No update needed for Z-Wave LED color: {Name}[{Index}]: {CurrentColor}",
+                        device.Name,
+                        i,
+                        deviceLedConfig[i].color);
+                }
+                else
                 {
                     this.logger.LogInformation(
                         "Updating Z-Wave LED color for: {Name}[{Index}]: {CurrentColor} => {NewColor}",
@@ -196,7 +217,15 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                     }
                 }
 
-                if (newBlink != deviceLedConfig[i].blink)
+                if (newBlink == deviceLedConfig[i].blink)
+                {
+                    this.logger.LogInformation(
+                        "No update needed for Z-Wave LED blink: {Name}[{Index}]: {CurrinetBlink}",
+                        device.Name,
+                        i,
+                        deviceLedConfig[i].blink == LedBlink.On ? "*" : ".");
+                }
+                else
                 {
                     this.logger.LogInformation(
                         "Updating Z-Wave LED blink for: {Name}[{Index}]: {CurrinetBlink} => {NewBlink}",

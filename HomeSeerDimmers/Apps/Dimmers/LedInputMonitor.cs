@@ -72,6 +72,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 if (state != null)
                 {
                     kvp.Value.UpdateCallback(kvp.Value.Index, state);
+                    logger.LogInformation(" Initial value [{Index}] {EntityId}: {State}", kvp.Value.Index, state.EntityId, state.State);
                 }
             }
 

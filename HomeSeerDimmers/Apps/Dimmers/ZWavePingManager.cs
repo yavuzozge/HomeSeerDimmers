@@ -4,6 +4,7 @@ using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -16,19 +17,37 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     /// </summary>
     public class ZWavePingManager : IZWavePingManager
     {
+        /// <summary>
+        /// Logger
+        /// </summary>
         private readonly ILogger<ZWavePingManager> logger;
-        private readonly IAppConfig<Config> appConfig;
+
+        /// <summary>
+        /// Home Assistant runner
+        /// </summary>
         private readonly IHomeAssistantRunner runner;
 
-        private IEnumerable<(HassDeviceExtended Device, ZWaveCommandClassId RefreshCommandClassId)> zwavePingDeviceMap = Enumerable.Empty<(HassDeviceExtended, ZWaveCommandClassId)>();
+        /// <summary>
+        /// App configuration
+        /// </summary>
+        private readonly IAppConfig<Config> appConfig;
+
+        /// <summary>
+        /// Devices to ping
+        /// </summary>
+        private ImmutableArray<(HassDeviceExtended Device, ZWaveCommandClassId RefreshCommandClassId)> zwavePingDeviceMap = [];
+
+        /// <summary>
+        /// Whether the device discovery has completed
+        /// </summary>
         private bool deviceDiscoveryCompleted = false;
 
         /// <summary>
         /// ctor
         /// </summary>
-        /// <param name="logger"></param>
-        /// <param name="runner"></param>
-        /// <param name="appConfig"></param>
+        /// <param name="logger">Logger</param>
+        /// <param name="runner">Home Assistant runner</param>
+        /// <param name="appConfig">App configuration</param>
         public ZWavePingManager(
             ILogger<ZWavePingManager> logger,
             IHomeAssistantRunner runner,
@@ -84,7 +103,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 .Select(d => (Device: d, this.appConfig.Value.ZWavePingDevices.FirstOrDefault(pd => string.Equals(pd.Name, d.Name, StringComparison.Ordinal))?.RefreshCommandClassId))
                 .Where(ping => ping.RefreshCommandClassId != null)
                 .Select(ping => (ping.Device, ping.RefreshCommandClassId ?? ZWaveCommandClassId.NoOperation))
-                .ToArray();
+                .ToImmutableArray();
 
             foreach ((HassDeviceExtended device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
             {
