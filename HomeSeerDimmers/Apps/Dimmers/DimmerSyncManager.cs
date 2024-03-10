@@ -4,7 +4,6 @@ using NetDaemon.Client;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
@@ -35,12 +34,12 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// The supported Homeseer dimmer models
         /// </summary>
-        private static readonly IImmutableSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(
+        private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(
             StringComparer.InvariantCulture,
             new[]
             {
-                "HS-WD200+", // => https://docs.homeseer.com/products/lighting/legacy-lighting/hs-wd200+
-                "HS-WX300" // => https://docs.homeseer.com/products/lighting/hs-wx300
+                "HS-WD200+", // => https://docs.homeseer.com/products/hs-wd200
+                "HS-WX300" // => https://docs.homeseer.com/products/hs-wx300
             });
 
         /// <summary>
@@ -174,12 +173,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <returns>Result of the sync</returns>
         private async Task<SyncLedDimmerResult> SyncLedsOfADimmerAsync(IHomeAssistantConnection connection, HassDeviceExtended device, LedInputTable input, CancellationToken cancellationToken)
         {
-            IReadOnlyList<(LedStatusColor color, LedBlink blink)>? deviceLedConfig = await connection.GetZWaveDimmerLedValuesAsync(device, cancellationToken);
-            if (deviceLedConfig == null)
-            {
-                this.logger.LogWarning("Unable to read Z-Wave device configs, skiping: {Name}", device.Name);
-                return SyncLedDimmerResult.SyncSucceeded;
-            }
+            DimmerConfig config = await connection.GetZWaveDimmerConfigAsync(device, cancellationToken);
 
             SyncLedDimmerResult result = SyncLedDimmerResult.SyncSucceeded;
 
@@ -188,13 +182,13 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 LedStatusColor newColor = input.Colors[i];
                 LedBlink newBlink = input.Blinks[i];
 
-                if (newColor == deviceLedConfig[i].color)
+                if (newColor == config.Colors[i])
                 {
-                    this.logger.LogInformation(
+                    this.logger.LogTrace(
                         "No update needed for Z-Wave LED color: {Name}[{Index}]: {CurrentColor}",
                         device.Name,
                         i,
-                        deviceLedConfig[i].color);
+                        config.Colors[i]);
                 }
                 else
                 {
@@ -202,7 +196,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                         "Updating Z-Wave LED color for: {Name}[{Index}]: {CurrentColor} => {NewColor}",
                         device.Name,
                         i,
-                        deviceLedConfig[i].color,
+                        config.Colors[i],
                         newColor);
 
                     try
@@ -217,21 +211,21 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                     }
                 }
 
-                if (newBlink == deviceLedConfig[i].blink)
+                if (newBlink == config.Blinks[i])
                 {
-                    this.logger.LogInformation(
-                        "No update needed for Z-Wave LED blink: {Name}[{Index}]: {CurrinetBlink}",
+                    this.logger.LogTrace(
+                        "No update needed for Z-Wave LED blink: {Name}[{Index}]: {CurrentBlink}",
                         device.Name,
                         i,
-                        deviceLedConfig[i].blink == LedBlink.On ? "*" : ".");
+                        config.Blinks[i] == LedBlink.On ? "*" : ".");
                 }
                 else
                 {
                     this.logger.LogInformation(
-                        "Updating Z-Wave LED blink for: {Name}[{Index}]: {CurrinetBlink} => {NewBlink}",
+                        "Updating Z-Wave LED blink for: {Name}[{Index}]: {CurrentBlink} => {NewBlink}",
                         device.Name,
                         i,
-                        deviceLedConfig[i].blink == LedBlink.On ? "*" : ".",
+                        config.Blinks[i] == LedBlink.On ? "*" : ".",
                         newBlink == LedBlink.On ? "*" : ".");
 
                     try
@@ -244,6 +238,60 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 
                         result = SyncLedDimmerResult.Retry;
                     }
+                }
+            }
+
+            if (config.CustomLedStatusMode == CustomLedStatusMode.Enable)
+            {
+                this.logger.LogTrace(
+                    "No update needed for Z-Wave EnableCustomLedStatusMode: {Name}: {Mode}",
+                    device.Name,
+                    config.CustomLedStatusMode);
+            }
+            else
+            {
+                this.logger.LogInformation(
+                    "Updating Z-Wave EnableCustomLedStatusMode for: {Name}: {CurrentMode} => {NewMode}",
+                    device.Name,
+                    config.CustomLedStatusMode,
+                    CustomLedStatusMode.Enable);
+
+                try
+                {
+                    await connection.SetZWaveCustomLedStatusModeAsync(device, CustomLedStatusMode.Enable, cancellationToken);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    this.logger.LogError(ex, "Unable to set Z-Wave EnableCustomLedStatusMode for device: {Name}", device.Name);
+
+                    result = SyncLedDimmerResult.Retry;
+                }
+            }
+
+            if (config.BlinkFrequency == this.appConfig.Value.DimmerLedBlinkFrequency)
+            {
+                this.logger.LogTrace(
+                    "No update needed for Z-Wave LED blink frequency: {Name}: {CurrentBlinkFrequency}",
+                    device.Name,
+                    config.BlinkFrequency);
+            }
+            else
+            {
+                this.logger.LogInformation(
+                    "Updating Z-Wave LED blink frequency for: {Name}: {CurrentBlinkFrequency} => {NewBlinkFrequency}",
+                    device.Name,
+                    config.BlinkFrequency,
+                    this.appConfig.Value.DimmerLedBlinkFrequency);
+
+                try
+                {
+                    await connection.SetZWaveBlinkFrequencyAsync(device, this.appConfig.Value.DimmerLedBlinkFrequency, cancellationToken);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    this.logger.LogError(ex, "Unable to set Z-Wave LED blink frequency for device: {Name}", device.Name);
+
+                    result = SyncLedDimmerResult.Retry;
                 }
             }
 
