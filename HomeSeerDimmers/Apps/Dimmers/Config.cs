@@ -40,6 +40,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         public string DimmerLedBlinkEntityNamePattern { get; set; } = string.Empty;
 
         /// <summary>
+        /// The LED blink frequency to be set for all dimmers
+        /// </summary>
+        public int DimmerLedBlinkFrequency { get; set; } = 5;
+
+        /// <summary>
         /// The amount of time the last Z-Wave device discovery done will be used.
         /// Once this time elapses, a new discovery will take place.
         /// Zero means rediscovery with every Z0-Wave sync

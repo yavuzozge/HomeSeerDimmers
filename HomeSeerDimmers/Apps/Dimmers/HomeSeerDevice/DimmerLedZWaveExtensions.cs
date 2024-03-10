@@ -2,6 +2,7 @@
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,36 +36,69 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         }
 
         /// <summary>
-        /// Gets the current values of LEDs of a HomeSeer dimmer ZWave device
+        /// Helper method that creates a ZWave config name for a HomeSeer dimmer custom LED status mode
+        /// </summary>
+        /// <param name="zwaveNodeId">ZWave node ID</param>
+        /// <returns>ZWave config name</returns>
+        private static string CreateCustomLedStatusModelConfigName(int zwaveNodeId)
+        {
+            return $"{zwaveNodeId}-112-0-13";
+        }
+
+        /// <summary>
+        /// Helper method that creates a ZWave config name for a HomeSeer blink frequency
+        /// </summary>
+        /// <param name="zwaveNodeId">ZWave node ID</param>
+        /// <returns>ZWave config name</returns>
+        private static string CreateBlinkFrequencyConfigName(int zwaveNodeId)
+        {
+            return $"{zwaveNodeId}-112-0-30";
+        }
+
+        /// <summary>
+        /// Gets the current configuration for a HomeSeer dimmer ZWave device
         /// </summary>
         /// <param name="connection">Home assistant connection</param>
         /// <param name="device">HomeSeer dimmer device</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Collection of LED values</returns>
+        /// <returns>Configruation</returns>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
-        public static async Task<IReadOnlyList<(LedStatusColor color, LedBlink blink)>> GetZWaveDimmerLedValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
+        public static async Task<DimmerConfig> GetZWaveDimmerConfigAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
         {
             IDictionary<string, ZwaveConfigParameters> result = await connection.GetZWaveConfigParametersAsync(device, cancellationToken);
 
             int zwaveNodeId = device.GetZWaveNodeId();
 
-            (LedStatusColor color, LedBlink blink)[] configs = new (LedStatusColor color, LedBlink blink)[7];
-            for (int i = 0; i < configs.Length; ++i)
+            LedStatusColor[] colors = new LedStatusColor[7];
+            LedBlink[] blinks = new LedBlink[7];
+
+            ZwaveConfigParameters? config;
+            for (int i = 0; i < 7; ++i)
             {
-                if (!result.TryGetValue(CreateLedStatusColorConfigName(zwaveNodeId, i), out ZwaveConfigParameters? config) || !config.TryGetEnumeratedValue(out LedStatusColor color))
+                if (!result.TryGetValue(CreateLedStatusColorConfigName(zwaveNodeId, i), out config) || !config.TryGetEnumeratedValue(out LedStatusColor color))
                 {
                     throw new InvalidOperationException($"Failed to parse LED color: {i} for device {device.Name}");
                 }
+                colors[i] = color;
 
                 if (!result.TryGetValue(CreateLedStatusBlinkConfigName(zwaveNodeId, i), out config) || !config.TryGetEnumeratedValue(out LedBlink blink))
                 {
                     throw new InvalidOperationException($"Failed to parse LED blink: {i} for device {device.Name}");
                 }
-
-                configs[i] = new(color, blink);
+                blinks[i] = blink;
             }
 
-            return configs;
+            if (!result.TryGetValue(CreateCustomLedStatusModelConfigName(zwaveNodeId), out config) || !config.TryGetEnumeratedValue(out CustomLedStatusMode customLedStatusMode))
+            {
+                throw new InvalidOperationException($"Failed to parse EnableCustomLedStatus for device {device.Name}");
+            }
+
+            if (!result.TryGetValue(CreateBlinkFrequencyConfigName(zwaveNodeId), out config) || !config.TryGetIntValue(out int blinkFrequency))
+            {
+                throw new InvalidOperationException($"Failed to parse BlinkFrequencyConfigName for device {device.Name}");
+            }
+
+            return new DimmerConfig(colors.ToImmutableArray(), blinks.ToImmutableArray(), customLedStatusMode, blinkFrequency);
         }
 
         /// <summary>
@@ -95,6 +129,34 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         public static async Task SetZWaveLedBlinkAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int index, LedBlink blink, CancellationToken cancellationToken)
         {
             await connection.SetZWaveConfigParameterAsync(device, 31, 1 << index, blink == LedBlink.On ? "1" : "0", cancellationToken);
+        }
+
+        /// <summary>
+        /// Sets the current enable custom LED status mode of a HomeSeer dimmer ZWave device
+        /// </summary>
+        /// <param name="connection">Home assistant connection</param>
+        /// <param name="device">HomeSeer dimmer device</param>
+        /// <param name="mode">Enable custom led status mode</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Awaitable task</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
+        public static async Task SetZWaveCustomLedStatusModeAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CustomLedStatusMode mode, CancellationToken cancellationToken)
+        {
+            await connection.SetZWaveConfigParameterAsync(device, 13, ((int)mode).ToString(), cancellationToken);
+        }
+
+        /// <summary>
+        /// Sets the current enableblink frequency of a HomeSeer dimmer ZWave device
+        /// </summary>
+        /// <param name="connection">Home assistant connection</param>
+        /// <param name="device">HomeSeer dimmer device</param>
+        /// <param name="blinkFrequency">Blink frequency</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Awaitable task</returns>
+        /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
+        public static async Task SetZWaveBlinkFrequencyAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int blinkFrequency, CancellationToken cancellationToken)
+        {
+            await connection.SetZWaveConfigParameterAsync(device, 30, blinkFrequency.ToString(), cancellationToken);
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
 {
     /// <summary>
-    /// HomeSeer LED blink states
+    /// HomeSeer dimmer LED blink states
     /// </summary>
     public enum LedBlink
     {

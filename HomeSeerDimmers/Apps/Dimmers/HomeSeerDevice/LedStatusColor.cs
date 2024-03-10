@@ -1,7 +1,7 @@
 ﻿namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
 {
     /// <summary>
-    /// HomeSeer LED status colors
+    /// HomeSeer dimmer LED status colors
     /// </summary>
     public enum LedStatusColor
     {

@@ -1,6 +1,7 @@
 ﻿using NetDaemon.Client;
 using NetDaemon.Client.HomeAssistant.Model;
 using System;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,23 +25,14 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
     }
 
     /// <summary>
-    /// Represents a ZWave configuration result status
-    /// </summary>
-    /// <param name="Status"></param>
-    // ValueKind = Object : {"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}"
-    public record ZwaveConfigSetResultStatus(
-        [property: JsonPropertyName("status")] string Status
-    );
-
-    /// <summary>
     /// Represents a ZWave configuration result
     /// </summary>
     /// <param name="ValueId"></param>
     /// <param name="Status"></param>
-    // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":{"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}}"
+    // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":"accepted"}"
     public record ZwaveConfigSetResult(
         [property: JsonPropertyName("value_id")] string ValueId,
-        [property: JsonPropertyName("status")] ZwaveConfigSetResultStatus Status
+        [property: JsonPropertyName("status")] string Status
     );
 
     /// <summary>
@@ -63,8 +55,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         {
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
 
-            // ValueKind = Object : "{"value_id":"3 - 112 - 0 - 27","status":{"status":"accepted","result":{"data":{"status":254},"status":254,"remaining_duration":null,"message":null}}}"
-            ZwaveConfigSetResult result = await connection.SendCommandAndReturnResponseAsync<SetZWaveConfigParameterHaCommand, ZwaveConfigSetResult>(
+            // Get the raw response so that we can include it in the exceptions if parsing fails
+            JsonElement? rawResult = await connection.SendCommandAndReturnResponseRawAsync(
                 new SetZWaveConfigParameterHaCommand
                 {
                     DeviceId = device.Id,
@@ -74,14 +66,23 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                 },
                 cancellationToken) ?? throw new InvalidOperationException("Zwave config set result is null");
 
-            if (result.Status == null)
+            try
             {
-                throw new InvalidOperationException("Zwave config set result status is null");
-            }
+                ZwaveConfigSetResult? result = rawResult is not null ? rawResult.Value.Deserialize<ZwaveConfigSetResult>() : default;
 
-            if (!string.Equals(result.Status.Status, "accepted", StringComparison.OrdinalIgnoreCase))
+                if (result?.Status == null)
+                {
+                    throw new InvalidOperationException("Zwave config set result status is null");
+                }
+
+                if (!string.Equals(result.Status, "accepted", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException($"Zwave config set result status does not indicate success: {result.Status}");
+                }
+            }
+            catch (JsonException e)
             {
-                throw new InvalidOperationException($"Zwave config set result status does not indicate success: {result.Status.Status}");
+                throw new InvalidOperationException($"Failed to deserialize Zwave config set result: {rawResult}", e);
             }
         }
 

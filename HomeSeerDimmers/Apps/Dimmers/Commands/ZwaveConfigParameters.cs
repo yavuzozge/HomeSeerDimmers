@@ -103,5 +103,22 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                 return true;
             }
         }
+
+        public static bool TryGetIntValue(this ZwaveConfigParameters config, out int value)
+        {
+            if (config == null)
+            {
+                value = default;
+                return false;
+            }
+            if (config.ValueType != "manual_entry")
+            {
+                value = default;
+                return false;
+            }
+
+            value = ((JsonElement)config.Value).GetInt32();
+            return true;
+        }
     }
 }
