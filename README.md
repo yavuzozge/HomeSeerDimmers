@@ -93,7 +93,7 @@ For supported configuration, see [Config](HomeSeerDimmers/Apps/Dimmers/Config.cs
 
 ## Compiling the code
 
-The project uses [.NET 8](https://dotnet.microsoft.com/en-us/download) and is created in VS 2022 but you can also use VS Code with .NET extensions.
+The project uses [.NET](https://dotnet.microsoft.com/en-us/download) and is created in VS 2022 but you can also use VS Code with .NET extensions.
 
 Alternativelty, it is also possible to compile from the command line by first opening a command prompt, go to the the root of the repo and then
 ```
