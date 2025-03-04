@@ -25,7 +25,7 @@ The project addresses the concerns mentioned above in the following ways:
 
 Currently HS-WD200+ and HS-WX300 are supported.
 
-This project is created in C# and .NET 8 using [NetDaemon](https://netdaemon.xyz/) which would need to be instaled on your HA instance.
+This project is created in C# and .NET using [NetDaemon](https://netdaemon.xyz/) which would need to be instaled on your HA instance.
 
 ## Getting started
 
