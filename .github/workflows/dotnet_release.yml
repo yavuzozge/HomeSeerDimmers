@@ -29,10 +29,11 @@ jobs:
         with: 
           name: HomeSeer-Dimmers-Download
           path: ./HomeSeerDimmers/bin/Release/net9.0
+      - run: zip -r HomeSeerDimmers.zip ./HomeSeerDimmers/bin/Release/net9.0
       - name: Create a GitHub release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
           body: ${{ steps.tag_version.outputs.changelog }}
-          artifacts: HomeSeer-Dimmers-Download.zip
+          artifacts: HomeSeerDimmers.zip
