@@ -1,6 +1,6 @@
 # Managing HomeSeer's Dimmer LEDs (HS-WD200+ and HS-WX300) Reliably in Home Assistant
 
-[![.NET](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet.yml/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet.yml)
+[![.NET](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet_release.yml/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet_release.yml)
 [![CodeQL](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/github-code-scanning/codeql)
 
 ## The problem
