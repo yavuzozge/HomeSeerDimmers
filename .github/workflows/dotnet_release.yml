@@ -1,4 +1,4 @@
-name: .NET Main
+name: .NET Release
 on:
   push:
     branches: [ "main" ]
@@ -35,3 +35,4 @@ jobs:
           tag: ${{ steps.tag_version.outputs.new_tag }}
           name: Release ${{ steps.tag_version.outputs.new_tag }}
           body: ${{ steps.tag_version.outputs.changelog }}
+          artifacts: HomeSeer-Dimmers-Download.zip
