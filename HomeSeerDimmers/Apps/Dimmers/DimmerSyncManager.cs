@@ -29,8 +29,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <summary>
         /// Limits discovery to models whose LED parameter layout is supported.
         /// </summary>
-        private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels =
-            ImmutableHashSet.Create(StringComparer.Ordinal, "HS-WD200+", "HS-WX300");
+        private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(StringComparer.Ordinal, "HS-WD200+", "HS-WX300");
 
         /// <summary>
         /// Records device updates and failures so synchronization problems remain visible.
@@ -159,7 +158,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="token">Cancels device requests.</param>
         /// <returns>Devices that need another attempt.</returns>
         private async Task<ImmutableArray<HassDeviceExtended>> SyncLedsOfDimmersAsync(
-            IHomeAssistantConnection connection, ImmutableArray<HassDeviceExtended> devices, LedInputTable input, bool readDevice, CancellationToken token)
+            IHomeAssistantConnection connection,
+            ImmutableArray<HassDeviceExtended> devices,
+            LedInputTable input,
+            bool readDevice,
+            CancellationToken token)
         {
             Stopwatch timer = Stopwatch.StartNew();
             ImmutableArray<HassDeviceExtended>.Builder? failed = null;
