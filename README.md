@@ -1,7 +1,13 @@
-# Managing HomeSeer's Dimmer LEDs (HS-WD200+ and HS-WX300) Reliably in Home Assistant
+# HomeSeerDimmers: Reliable HomeSeer Dimmer LED Control for Home Assistant
 
 [![.NET](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet_release.yml/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/dotnet_release.yml)
 [![CodeQL](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/github-code-scanning/codeql/badge.svg)](https://github.com/yavuzozge/HomeSeerDimmers/actions/workflows/github-code-scanning/codeql)
+
+HomeSeerDimmers is a C#/.NET application built on [NetDaemon](https://netdaemon.xyz/)
+for reliable control of HomeSeer HS-WD200+ and HS-WX300 status LEDs in Home Assistant
+over Z-Wave. Use Home Assistant template sensors to set LED colors and blinking,
+with automatic dimmer discovery, retries for failed configuration messages, and
+periodic synchronization to keep the LEDs consistent with your sensors.
 
 ## The problem
 
