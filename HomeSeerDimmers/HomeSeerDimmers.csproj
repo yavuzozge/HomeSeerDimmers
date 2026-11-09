@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net9.0</TargetFramework>
+        <TargetFramework>net10.0</TargetFramework>
         <Nullable>enable</Nullable>
         <RootNamespace>Ozy.HomeSeerDimmers</RootNamespace>
         <UserSecretsId>2e493d24-ed4c-4a9d-be04-dd457758eeba</UserSecretsId>
@@ -28,16 +28,16 @@
     </Target>
         
     <ItemGroup>
-        <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
-        <PackageReference Include="NetDaemon.AppModel" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.HassModel.Integration" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.Runtime" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.HassModel" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.Client" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.Extensions.Scheduling" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.Extensions.Logging" Version="25.42.0" />
-        <PackageReference Include="NetDaemon.Extensions.Tts" Version="25.42.0" />
-        <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-        <PackageReference Include="System.Reactive" Version="6.1.0" />
+        <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
+        <PackageReference Include="NetDaemon.AppModel" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.HassModel.Integration" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.Runtime" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.HassModel" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.Client" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.Extensions.Scheduling" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.Extensions.Logging" Version="26.43.1" />
+        <PackageReference Include="NetDaemon.Extensions.Tts" Version="26.43.1" />
+        <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+        <PackageReference Include="System.Reactive" Version="7.0.0" />
     </ItemGroup>
 </Project>

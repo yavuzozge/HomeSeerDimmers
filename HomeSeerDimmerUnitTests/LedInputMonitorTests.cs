@@ -37,7 +37,7 @@ namespace HomeSeerDimmerUnitTests
         public void CtorThrowsWhenConfigDimmerLedColorEntityNamePatternIsEmpty()
         {
             // Act & Assert
-            Assert.ThrowsException<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
+            Assert.Throws<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
         }
 
         [TestMethod]
@@ -47,7 +47,7 @@ namespace HomeSeerDimmerUnitTests
             this.config.DimmerLedColorEntityNamePattern = "sensor.dimmer_led_{0}_color";
 
             // Act & Assert
-            Assert.ThrowsException<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
+            Assert.Throws<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
         }
 
         [TestMethod]
@@ -58,7 +58,7 @@ namespace HomeSeerDimmerUnitTests
             this.config.DimmerLedBlinkEntityNamePattern = "sensor.dimmer_led_{0}_color";
 
             // Act & Assert
-            Assert.ThrowsException<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
+            Assert.Throws<ArgumentException>(() => new LedInputMonitor(this.mockHaContext.Object, this.mockLogger.Object, this.mockAppConfig.Object));
         }
 
         [TestMethod]
