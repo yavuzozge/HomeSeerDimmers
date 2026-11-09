@@ -20,9 +20,11 @@ namespace HomeSeerDimmerUnitTests
             LedInputTable table2 = table.CreateWithColor(1, LedStatusColor.Blue);
 
             // Assery
-            table.Should().NotBeSameAs(table2);
-            table.Colors[1].Should().Be(LedStatusColor.Off);
-            table2.Colors[1].Should().Be(LedStatusColor.Blue);
+            _ = table.Should().NotBeSameAs(table2);
+            _ = table.Colors[1].Should().Be(LedStatusColor.Off);
+            _ = table2.Colors.Should().Equal(LedStatusColor.Off, LedStatusColor.Blue, LedStatusColor.Off,
+                LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off, LedStatusColor.Off);
+            _ = table2.Blinks.Equals(table.Blinks).Should().BeTrue();
         }
 
         [TestMethod]
@@ -35,9 +37,34 @@ namespace HomeSeerDimmerUnitTests
             LedInputTable table2 = table.CreateWithBlink(1, LedBlink.On);
 
             // Assery
-            table.Should().NotBeSameAs(table2);
-            table.Blinks[1].Should().Be(LedBlink.Off);
-            table2.Blinks[1].Should().Be(LedBlink.On);
+            _ = table.Should().NotBeSameAs(table2);
+            _ = table.Blinks[1].Should().Be(LedBlink.Off);
+            _ = table2.Blinks.Should().Equal(LedBlink.Off, LedBlink.On, LedBlink.Off,
+                LedBlink.Off, LedBlink.Off, LedBlink.Off, LedBlink.Off);
+            _ = table2.Colors.Equals(table.Colors).Should().BeTrue();
+        }
+
+        [TestMethod]
+        public void UnchangedColorsAndBlinksReuseTheExistingTable()
+        {
+            LedInputTable table = new();
+            LedInputTable active = table.CreateWithColor(0, LedStatusColor.Red).CreateWithBlink(6, LedBlink.On);
+
+            _ = table.CreateWithColor(0, LedStatusColor.Off).Should().BeSameAs(table);
+            _ = table.CreateWithBlink(6, LedBlink.Off).Should().BeSameAs(table);
+            _ = active.CreateWithColor(0, LedStatusColor.Red).Should().BeSameAs(active);
+            _ = active.CreateWithBlink(6, LedBlink.On).Should().BeSameAs(active);
+        }
+
+        [TestMethod]
+        [DataRow(-1)]
+        [DataRow(LedInputTable.NumberOfLeds)]
+        public void InvalidIndicesAreRejectedEvenWhenTheValueIsUnchanged(int index)
+        {
+            LedInputTable table = new();
+
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() => table.CreateWithColor(index, LedStatusColor.Off));
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() => table.CreateWithBlink(index, LedBlink.Off));
         }
     }
 }

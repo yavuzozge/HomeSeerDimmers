@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
@@ -50,7 +51,14 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         [property: JsonPropertyName("name_by_user")] string NameByUser,
         [property: JsonPropertyName("manufacturer")] string Manufacturer,
         [property: JsonPropertyName("model")] string Model,
-        [property: JsonPropertyName("identifiers")] IList<IList<string>> Identifiers);
+        [property: JsonPropertyName("identifiers")] IList<IList<string>> Identifiers)
+    {
+        /// <summary>
+        /// Identifies who disabled the device, or null when the device is enabled.
+        /// </summary>
+        [JsonPropertyName("disabled_by")]
+        public string? DisabledBy { get; init; }
+    }
 
     /// <summary>
     /// ZWave extensions to <see cref="HassDeviceExtended"/>
@@ -65,38 +73,67 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <returns>True if return had succeeded, false otherwise</returns>
         public static bool TryGetZWaveNodeId(this HassDeviceExtended device, out int nodeId)
         {
-            if (device == null)
+            nodeId = 0;
+            if (device?.Identifiers == null)
             {
-                nodeId = 0;
                 return false;
             }
 
-            if (!device.Identifiers.Any())
+            foreach (IList<string> identifier in device.Identifiers)
             {
-                nodeId = 0;
-                return false;
+                if (identifier == null || identifier.Count != 2
+                    || !string.Equals(identifier[0], "zwave_js", StringComparison.Ordinal)
+                    || string.IsNullOrWhiteSpace(identifier[1]))
+                {
+                    continue;
+                }
+
+                ReadOnlySpan<char> value = identifier[1];
+                int separator = value.IndexOf('-');
+                if (separator <= 0
+                    || !uint.TryParse(value[..separator], NumberStyles.None, CultureInfo.InvariantCulture, out uint homeId)
+                    || homeId == 0)
+                {
+                    continue;
+                }
+
+                ReadOnlySpan<char> nodeAndSuffix = value[(separator + 1)..];
+                int suffixSeparator = nodeAndSuffix.IndexOf('-');
+                ReadOnlySpan<char> node = suffixSeparator < 0 ? nodeAndSuffix : nodeAndSuffix[..suffixSeparator];
+                if (int.TryParse(node, NumberStyles.None, CultureInfo.InvariantCulture, out int candidate)
+                    && candidate > 0
+                    && (suffixSeparator < 0 || IsValidIdentifierSuffix(nodeAndSuffix[(suffixSeparator + 1)..])))
+                {
+                    nodeId = candidate;
+                    return true;
+                }
             }
 
-            if (device.Identifiers[0].Count < 2)
+            return false;
+        }
+
+        /// <summary>
+        /// Checks the product, endpoint, or endpoint-group suffix used by Home Assistant.
+        /// </summary>
+        /// <param name="suffix">Identifier suffix after the node ID.</param>
+        /// <returns>Whether the suffix has a supported numeric format.</returns>
+        private static bool IsValidIdentifierSuffix(ReadOnlySpan<char> suffix)
+        {
+            if (suffix.StartsWith("g", StringComparison.Ordinal))
             {
-                nodeId = 0;
-                return false;
+                return int.TryParse(suffix[1..], NumberStyles.None, CultureInfo.InvariantCulture, out int groupId) && groupId > 0;
             }
 
-            if (!string.Equals(device.Identifiers[0][0], "zwave_js"))
+            if (!suffix.Contains(':'))
             {
-                nodeId = 0;
-                return false;
+                return int.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out int endpoint) && endpoint > 0;
             }
 
-            string[] splitted = device.Identifiers[0][1].Split('-');
-            if (splitted.Length < 2)
-            {
-                nodeId = 0;
-                return false;
-            }
-
-            return int.TryParse(splitted[1], out nodeId);
+            Span<Range> parts = stackalloc Range[4];
+            return suffix.Split(parts, ':') == 3
+                && ushort.TryParse(suffix[parts[0]], NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                && ushort.TryParse(suffix[parts[1]], NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                && ushort.TryParse(suffix[parts[2]], NumberStyles.None, CultureInfo.InvariantCulture, out _);
         }
 
         /// <summary>

@@ -10,7 +10,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     public class PingZwaveDevice
     {
         /// <summary>
-        /// The name of the device
+        /// The registry name or user-assigned Home Assistant name of the device to refresh.
         /// </summary>
         public string Name { get; set; } = string.Empty;
 
@@ -26,6 +26,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     public class Config
     {
         /// <summary>
+        /// Holds a valid blink interval so malformed configuration cannot reach device operations.
+        /// </summary>
+        private int dimmerLedBlinkFrequency = 5;
+
+        /// <summary>
         /// Pattern to match with Home Assistant entity names what we will monitor 
         /// to get the dimmer LED color state changes. {0} will be from 1-7
         /// e.g.: sensor.dimmer_led_{0}_color
@@ -40,14 +45,26 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         public string DimmerLedBlinkEntityNamePattern { get; set; } = string.Empty;
 
         /// <summary>
-        /// The LED blink frequency to be set for all dimmers
+        /// Blink interval in units of 100 milliseconds, from 0 through 255; zero disables blinking.
         /// </summary>
-        public int DimmerLedBlinkFrequency { get; set; } = 5;
+        /// <exception cref="ArgumentOutOfRangeException">The configured interval is outside the supported range.</exception>
+        public int DimmerLedBlinkFrequency
+        {
+            get => this.dimmerLedBlinkFrequency;
+            set
+            {
+                if (value is < 0 or > byte.MaxValue)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(DimmerLedBlinkFrequency), value,
+                        "The LED blink interval must be from 0 through 255, in units of 100 milliseconds.");
+                }
+                this.dimmerLedBlinkFrequency = value;
+            }
+        }
 
         /// <summary>
-        /// The amount of time the last Z-Wave device discovery done will be used.
-        /// Once this time elapses, a new discovery will take place.
-        /// Zero means rediscovery with every Z0-Wave sync
+        /// How long LED synchronization and ping operations reuse their device discovery.
+        /// Zero means rediscovery with every synchronization or ping operation.
         /// </summary>
         public TimeSpan ZWaveDevicesDiscoveryValidity { get; set; }
 

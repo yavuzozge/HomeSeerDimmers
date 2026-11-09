@@ -1,5 +1,6 @@
 ﻿using NetDaemon.Client;
 using NetDaemon.Client.HomeAssistant.Model;
+using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -38,6 +39,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         public static async Task<IDictionary<string, ZwaveConfigParameters>> GetZWaveConfigParametersAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
         {
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
+            cancellationToken.ThrowIfCancellationRequested();
 
             IDictionary<string, ZwaveConfigParameters>? result = await connection.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 new GetZWaveConfigParametersHaCommand
@@ -46,7 +48,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                 },
                 cancellationToken);
 
-            return result ?? new Dictionary<string, ZwaveConfigParameters>();
+            cancellationToken.ThrowIfCancellationRequested();
+            return result ?? throw new InvalidOperationException($"The Z-Wave configuration response is null for device {device.Name}");
         }
     }
 }

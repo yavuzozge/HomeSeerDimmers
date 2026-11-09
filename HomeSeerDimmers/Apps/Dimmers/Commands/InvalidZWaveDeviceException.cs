@@ -10,11 +10,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <summary>
         /// Helper method ensuring that the device is a Z-Wave device
         /// </summary>
-        /// <param name="device"></param>
+        /// <param name="device">Device</param>
         /// <exception cref="InvalidZWaveDeviceException">If device is not a Z-Wave device</exception>
         public static void ThrowIfInvalid(HassDeviceExtended device)
         {
-            if (!device.TryGetZWaveNodeId(out int _))
+            if (string.IsNullOrWhiteSpace(device?.Id) || !device.TryGetZWaveNodeId(out int _))
             {
                 throw new InvalidZWaveDeviceException();
             }

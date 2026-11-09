@@ -36,13 +36,15 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         public static async Task RefreshNodeValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CancellationToken cancellationToken)
         {
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            await connection.SendCommandAndReturnResponseRawAsync(
+            _ = await connection.SendCommandAndReturnResponseRawAsync(
                 new RefreshNodeValuesHaCommand
                 {
                     DeviceId = device.Id
                 },
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 }

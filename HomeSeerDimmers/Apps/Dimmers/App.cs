@@ -1,55 +1,82 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using NetDaemon.AppModel;
 using NetDaemon.HassModel;
 using NetDaemon.HassModel.Integration;
 using System;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 {
     /// <summary>
-    /// The app class
+    /// Connects LED inputs, periodic schedules, and Home Assistant services to device operations.
     /// </summary>
     [NetDaemonApp]
-    public class App
+    public class App : IAsyncDisposable
     {
-        private readonly IHaContext ha;
-        private readonly ILogger<App> logger;
-        private readonly ILedInputMonitor ledInputMonitor;
+        /// <summary>
+        /// Applies desired LED settings without exposing device parameters to the coordinator.
+        /// </summary>
         private readonly IDimmerSyncManager dimmerDeviceManager;
-        private readonly IZWavePingManager zwavePingManager;
 
         /// <summary>
-        /// Used to serialize asynchronous task executions so that we can make sure that 
-        /// the calls to Z-Wave devices are done one operation group at a time
+        /// Protects the latest input and shutdown state so callbacks cannot lose updates.
         /// </summary>
-        private readonly Subject<Func<Task>> zwaveOperationsSerialExecutor = new();
+        private readonly object stateLock = new();
 
         /// <summary>
-        /// Subject that connects to LED input monitor to receive input table updates
-        /// as well as allowing the replay of the last input update for LED syncs
+        /// Owns input, timer, and service subscriptions so shutdown releases them together.
         /// </summary>
-        private readonly Subject<LedInputTable> inputTableSubject = new();
+        private readonly CompositeDisposable subscriptions = new();
 
         /// <summary>
-        /// Last LED input table that will be used for LED syncs
+        /// Owns serial execution and cancellation so the app only coordinates operation requests.
+        /// </summary>
+        private readonly ZWaveOperationQueue operations;
+
+        /// <summary>
+        /// Reuses one callback so repeated sync requests can be combined without allocating delegates.
+        /// </summary>
+        private readonly Func<CancellationToken, Task> syncLeds;
+
+        /// <summary>
+        /// Reuses one callback so repeated timer ticks share one pending refresh.
+        /// </summary>
+        private readonly Func<CancellationToken, Task> pingDevices;
+
+        /// <summary>
+        /// Stores current desired settings so a queued sync never uses an obsolete captured table.
         /// </summary>
         private LedInputTable lastInputTable = new();
 
         /// <summary>
-        /// ctor
+        /// Preserves full-resync requests when input changes share the same pending callback.
         /// </summary>
-        /// <param name="ha"></param>
-        /// <param name="scheduler"></param>
-        /// <param name="logger"></param>
-        /// <param name="ledInputMonitor"></param>
-        /// <param name="dimmerDeviceManager"></param>
-        /// <param name="zwavePingManager"></param>
-        /// <param name="appConfig"></param>
+        private bool reconciliationRequested;
+
+        /// <summary>
+        /// Rejects callbacks once shutdown starts so subscriptions cannot request more work.
+        /// </summary>
+        private bool disposed;
+
+        /// <summary>
+        /// Shares cleanup across disposal callers so all of them wait for the same shutdown.
+        /// </summary>
+        private Task? disposalTask;
+
+        /// <summary>
+        /// Registers input, timer, and service callbacks before starting device work.
+        /// </summary>
+        /// <param name="ha">Home Assistant context.</param>
+        /// <param name="scheduler">Scheduler for periodic operations.</param>
+        /// <param name="logger">Application logger.</param>
+        /// <param name="ledInputMonitor">Source of desired LED settings.</param>
+        /// <param name="dimmerDeviceManager">LED synchronization manager.</param>
+        /// <param name="zwavePingManager">Device refresh manager.</param>
+        /// <param name="appConfig">Application configuration.</param>
         public App(
             IHaContext ha,
             IScheduler scheduler,
@@ -67,67 +94,134 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             ArgumentNullException.ThrowIfNull(zwavePingManager);
             ArgumentNullException.ThrowIfNull(appConfig);
 
-            this.ha = ha;
-            this.logger = logger;
-            this.ledInputMonitor = ledInputMonitor;
             this.dimmerDeviceManager = dimmerDeviceManager;
-            this.zwavePingManager = zwavePingManager;
-
-            _ = this.zwaveOperationsSerialExecutor.SubscribeAsync(cb => cb(), this.logger);
-
-            _ = this.inputTableSubject.Subscribe(this.ScheduleLedSync);
-
-            _ = this.ledInputMonitor.AllInputTableChanges.Subscribe(this.inputTableSubject);
-
-            if (appConfig.Value.LedSyncInterval > TimeSpan.Zero)
+            this.syncLeds = this.SyncLedsAsync;
+            this.pingDevices = zwavePingManager.PingDevicesAsync;
+            this.operations = new ZWaveOperationQueue(logger, 2);
+            try
             {
-                logger.LogInformation("Scheduling periodic LED sync with interval: {Interval}", appConfig.Value.LedSyncInterval);
-                _ = scheduler.SchedulePeriodic(appConfig.Value.LedSyncInterval, this.ScheduleLedReSync);
+                this.subscriptions.Add(ledInputMonitor.AllInputTableChanges.Subscribe(this.ScheduleLedSync));
+                if (appConfig.Value.LedSyncInterval > TimeSpan.Zero)
+                {
+                    logger.LogInformation("Scheduling periodic LED sync with interval: {Interval}", appConfig.Value.LedSyncInterval);
+                    this.subscriptions.Add(scheduler.SchedulePeriodic(appConfig.Value.LedSyncInterval, this.ScheduleLedReSync));
+                }
+                if (appConfig.Value.ZWavePingInterval > TimeSpan.Zero)
+                {
+                    logger.LogInformation("Scheduling periodic ZWave pings with interval: {Interval}", appConfig.Value.ZWavePingInterval);
+                    this.subscriptions.Add(scheduler.SchedulePeriodic(appConfig.Value.ZWavePingInterval, this.ScheduleZWavePing));
+                }
+                this.subscriptions.Add(ha.RegisterService<SynchronizeDimmersData>("synchronize_dimmers")
+                    .Subscribe(_ => this.ScheduleLedReSync()));
+                this.operations.Start();
             }
-
-            if (appConfig.Value.ZWavePingInterval > TimeSpan.Zero)
+            catch
             {
-                logger.LogInformation("Scheduling periodic ZWave pings with interval: {Interval}", appConfig.Value.ZWavePingInterval);
-                _ = scheduler.SchedulePeriodic(appConfig.Value.ZWavePingInterval, this.ScheduleZWavePing);
+                this.operations.DisposeAsync().AsTask().GetAwaiter().GetResult();
+                this.subscriptions.Dispose();
+                throw;
             }
-
-            this.ha.RegisterServiceCallBack<SynchronizeDimmersData>("synchronize_dimmers", _ => this.ScheduleLedReSync());
         }
 
         /// <summary>
-        /// Helper method that schedules a Z-Wave related task to be executed serially
+        /// Stops device work and releases callbacks without running external cleanup under the state lock.
         /// </summary>
-        /// <param name="createTask">Delegate that creates the Z-Wave operation task</param>
-        private void ScheduleZwaveOperation(Func<Task> createTask)
+        /// <returns>A task that completes after subscriptions and active operations have stopped.</returns>
+        public ValueTask DisposeAsync()
         {
-            this.zwaveOperationsSerialExecutor.OnNext(createTask);
+            lock (this.stateLock)
+            {
+                if (this.disposalTask == null)
+                {
+                    this.disposed = true;
+                    Task queueShutdown = this.operations.DisposeAsync().AsTask();
+                    this.disposalTask = Task.Run(() => this.StopAsync(queueShutdown));
+                }
+                return new ValueTask(this.disposalTask);
+            }
         }
 
         /// <summary>
-        /// Sets the last input table and schedules all the LEDs to be synced
+        /// Releases subscriptions outside the state lock so disposal callbacks cannot deadlock scheduling.
         /// </summary>
+        /// <param name="queueShutdown">Shutdown already started by the operation queue.</param>
+        /// <returns>A task that completes after both callback and worker cleanup.</returns>
+        private async Task StopAsync(Task queueShutdown)
+        {
+            try
+            {
+                this.subscriptions.Dispose();
+            }
+            finally
+            {
+                await queueShutdown.ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>
+        /// Saves the newest input before requesting a sync so queued work sees current sensor values.
+        /// </summary>
+        /// <param name="inputTable">Latest LED colors and blink states.</param>
         private void ScheduleLedSync(LedInputTable inputTable)
         {
-            this.lastInputTable = inputTable;
-            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersToAsync(this.lastInputTable, CancellationToken.None));
+            lock (this.stateLock)
+            {
+                if (this.disposed)
+                {
+                    return;
+                }
+                this.lastInputTable = inputTable;
+            }
+            this.operations.Enqueue(this.syncLeds);
         }
 
         /// <summary>
-        /// Schedules all the LEDs to be resynced using the last input
-        /// This is primarily to support to recover from the cases when the Z-Wave updates were failed
-        /// (due to Z-Wave network congestion ...etc.)
+        /// Requests fresh device reads so periodic and manual resyncs can repair a stale Home Assistant cache.
         /// </summary>
         private void ScheduleLedReSync()
         {
-            this.ScheduleZwaveOperation(() => this.dimmerDeviceManager.SyncDimmersToAsync(this.lastInputTable, CancellationToken.None));
+            lock (this.stateLock)
+            {
+                if (this.disposed)
+                {
+                    return;
+                }
+                this.reconciliationRequested = true;
+            }
+            this.operations.Enqueue(this.syncLeds);
         }
 
         /// <summary>
-        /// Schedules a ping to Z-Wave devices, set in Z-Wave ping manager
+        /// Reads the latest input at execution time so queued requests do not replay stale snapshots.
+        /// </summary>
+        /// <param name="token">Cancels device requests when the queue stops.</param>
+        /// <returns>The device synchronization task.</returns>
+        private Task SyncLedsAsync(CancellationToken token)
+        {
+            LedInputTable input;
+            bool reconcile;
+            lock (this.stateLock)
+            {
+                if (this.disposed)
+                {
+                    return Task.CompletedTask;
+                }
+                input = this.lastInputTable;
+                reconcile = this.reconciliationRequested;
+                this.reconciliationRequested = false;
+            }
+            token.ThrowIfCancellationRequested();
+            return reconcile
+                ? this.dimmerDeviceManager.ReconcileDimmersToAsync(input, token)
+                : this.dimmerDeviceManager.SyncDimmersToAsync(input, token);
+        }
+
+        /// <summary>
+        /// Requests a refresh through the queue so timer ticks cannot accumulate duplicate work.
         /// </summary>
         private void ScheduleZWavePing()
         {
-            this.ScheduleZwaveOperation(() => this.zwavePingManager.PingDevicesAsync(CancellationToken.None));
+            this.operations.Enqueue(this.pingDevices);
         }
     }
 }

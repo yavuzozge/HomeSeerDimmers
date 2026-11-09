@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Linq;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -63,7 +63,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         [property: JsonPropertyName("property")] int Property,
         [property: JsonPropertyName("property_key")] int? PropertyKey,
         [property: JsonPropertyName("configuration_value_type")] string ValueType,
-        [property: JsonPropertyName("value")] dynamic Value);
+        [property: JsonPropertyName("value")] JsonElement Value);
 
     /// <summary>
     /// Extension class for <see cref="ZwaveConfigParameters"/>
@@ -71,54 +71,46 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
     public static class ZwaveConfigParametersExtensions
     {
         /// <summary>
-        /// Helper method to get an value as an enum from a ZWave configuration parameters
+        /// Reads a defined enum value from an enumerated Z-Wave configuration parameter.
         /// </summary>
-        /// <typeparam name="T">Type of enum</typeparam>
-        /// <param name="config">ZWave configuration</param>
-        /// <param name="enumValue">Output</param>
-        /// <returns>True if get was succesful, otherwise false</returns>
+        /// <typeparam name="T">Enum type.</typeparam>
+        /// <param name="config">Z-Wave configuration parameter.</param>
+        /// <param name="enumValue">The parsed value, or the default enum value when reading fails.</param>
+        /// <returns>Whether the parameter contains a defined enum value.</returns>
         public static bool TryGetEnumeratedValue<T>(this ZwaveConfigParameters config, out T enumValue) where T : struct, Enum
         {
-            if (config == null)
+            enumValue = default;
+            if (config == null || config.ValueType != "enumerated"
+                || config.Value.ValueKind != JsonValueKind.Number
+                || !config.Value.TryGetInt32(out int value))
             {
-                enumValue = default;
-                return false;
-            }
-            if (config.ValueType != "enumerated")
-            {
-                enumValue = default;
                 return false;
             }
 
-            int value = ((JsonElement)config.Value).GetInt32();
-            T[] values = Enum.GetValues<T>();
-            T? found = values.FirstOrDefault(v => Convert.ToInt32(v) == value);
-            if (!found.HasValue)
+            // Eleven characters cover every signed 32-bit integer.
+            Span<char> buffer = stackalloc char[11];
+            _ = value.TryFormat(buffer, out int written, provider: CultureInfo.InvariantCulture);
+            if (Enum.TryParse(buffer[..written], out T candidate) && Enum.IsDefined(candidate))
             {
-                enumValue = default;
-                return false;
-            }
-            {
-                enumValue = found.Value;
+                enumValue = candidate;
                 return true;
             }
+
+            return false;
         }
 
+        /// <summary>
+        /// Reads an integer from a configuration parameter.
+        /// </summary>
+        /// <param name="config">Z-Wave configuration parameter.</param>
+        /// <param name="value">The integer value, or zero when reading fails.</param>
+        /// <returns>Whether the parameter contains a valid integer.</returns>
         public static bool TryGetIntValue(this ZwaveConfigParameters config, out int value)
         {
-            if (config == null)
-            {
-                value = default;
-                return false;
-            }
-            if (config.ValueType != "manual_entry")
-            {
-                value = default;
-                return false;
-            }
-
-            value = ((JsonElement)config.Value).GetInt32();
-            return true;
+            value = default;
+            return config != null && config.ValueType == "manual_entry"
+                && config.Value.ValueKind == JsonValueKind.Number
+                && config.Value.TryGetInt32(out value);
         }
     }
 }
