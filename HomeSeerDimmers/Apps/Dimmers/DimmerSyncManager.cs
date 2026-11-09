@@ -1,12 +1,15 @@
 ﻿using Microsoft.Extensions.Logging;
 using NetDaemon.AppModel;
 using NetDaemon.Client;
+using NetDaemon.Client.Exceptions;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Concurrency;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,21 +21,28 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     public class DimmerSyncManager : IDimmerSyncManager
     {
         /// <summary>
-        /// Indicates the sync result
+        /// Indicates whether a device needs another sync attempt so failed updates can be retried.
         /// </summary>
         private enum SyncLedDimmerResult
         {
+            /// <summary>
+            /// Synchronization succeeded, so no further attempts are needed.
+            /// </summary>
             SyncSucceeded,
+
+            /// <summary>
+            /// A device update failed, so another synchronization pass should be attempted.
+            /// </summary>
             Retry
         }
 
         /// <summary>
-        /// The manufacturer string used fro Homeseer devices
+        /// Identifies HomeSeer devices in the registry so discovery excludes other manufacturers.
         /// </summary>
         private const string HomeseerManufacturer = "HomeSeer Technologies";
 
         /// <summary>
-        /// The supported Homeseer dimmer models
+        /// Limits discovery to models whose LED configuration parameters are supported.
         /// </summary>
         private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(
             StringComparer.InvariantCulture,
@@ -58,14 +68,19 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         private readonly IHomeAssistantRunner runner;
 
         /// <summary>
+        /// Supplies discovery time so cache expiry can be controlled without waiting in tests.
+        /// </summary>
+        private readonly IScheduler scheduler;
+
+        /// <summary>
         /// Discovered dimmer devices
         /// </summary>
         private ImmutableArray<HassDeviceExtended> dimmerDevices = [];
 
         /// <summary>
-        /// When the next discovery should be done (relative to system start time)
+        /// Marks when cached discovery expires so network changes are picked up by a later sync.
         /// </summary>
-        private TimeSpan nextDiscoveryTime = TimeSpan.MinValue;
+        private DateTimeOffset nextDiscoveryTime = DateTimeOffset.MinValue;
 
         /// <summary>
         /// ctor
@@ -73,23 +88,28 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         /// <param name="logger">Logger</param>
         /// <param name="appConfig">App configuration</param>
         /// <param name="runner">Home assistant connection runner</param>
+        /// <param name="scheduler">Scheduler that supplies the discovery clock.</param>
         public DimmerSyncManager(
             ILogger<DimmerSyncManager> logger,
             IAppConfig<Config> appConfig,
-            IHomeAssistantRunner runner)
+            IHomeAssistantRunner runner,
+            IScheduler scheduler)
         {
             ArgumentNullException.ThrowIfNull(logger);
             ArgumentNullException.ThrowIfNull(appConfig);
             ArgumentNullException.ThrowIfNull(runner);
+            ArgumentNullException.ThrowIfNull(scheduler);
 
             this.logger = logger;
             this.appConfig = appConfig;
             this.runner = runner;
+            this.scheduler = scheduler;
         }
 
         /// <inheritdoc />
         public async Task SyncDimmersToAsync(LedInputTable input, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             IHomeAssistantConnection? connection = this.runner.CurrentConnection;
             if (connection == null)
             {
@@ -97,17 +117,17 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 return;
             }
 
-            TimeSpan sinceSystemStart = TimeSpan.FromMilliseconds(Environment.TickCount64);
-            if (this.nextDiscoveryTime <= sinceSystemStart)
+            if (this.nextDiscoveryTime <= this.scheduler.Now)
             {
                 await this.DiscoverDimmersAsync(connection, cancellationToken);
 
-                this.nextDiscoveryTime = sinceSystemStart + this.appConfig.Value.ZWaveDevicesDiscoveryValidity;
+                this.nextDiscoveryTime = this.scheduler.Now + this.appConfig.Value.ZWaveDevicesDiscoveryValidity;
             }
 
             SyncLedDimmerResult result = await this.SyncLedsOfDiscoveredDimmersAsync(connection, input, cancellationToken);
             if (result == SyncLedDimmerResult.Retry)
             {
+                this.nextDiscoveryTime = DateTimeOffset.MinValue;
                 // retry only once
                 this.logger.LogInformation("Retrying");
                 await this.SyncLedsOfDiscoveredDimmersAsync(connection, input, cancellationToken);
@@ -115,7 +135,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <summary>
-        /// Discovers the dimmers that will be used in sync operation
+        /// Refreshes the supported, enabled dimmers so syncs use the current device registry.
         /// </summary>
         /// <param name="connection">Home Assistant connection</param>
         /// <param name="token">Cancellation token</param>
@@ -126,7 +146,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 
             ImmutableArray<HassDeviceExtended> dimmerDevices =
                 (await connection.GetDevicesExtendedAsync(token))
-                    .Where(d => string.Equals(HomeseerManufacturer, d.Manufacturer, StringComparison.InvariantCultureIgnoreCase)
+                    .Where(d => d.DisabledBy == null && d.TryGetZWaveNodeId(out _)
+                        && string.Equals(HomeseerManufacturer, d.Manufacturer, StringComparison.InvariantCultureIgnoreCase)
                         && SupportedHomeseerDimmerModels.Contains(d.Model))
                     .ToImmutableArray();
 
@@ -139,7 +160,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <summary>
-        /// Syncs LEDs of all dimmers that were discovered
+        /// Syncs each discovered dimmer independently so one device failure does not block healthy devices.
         /// </summary>
         /// <param name="connection">Home Assistant connection</param>
         /// <param name="input">LED input table</param>
@@ -151,10 +172,19 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             SyncLedDimmerResult result = SyncLedDimmerResult.SyncSucceeded;
             foreach (HassDeviceExtended device in this.dimmerDevices)
             {
-                SyncLedDimmerResult dimmerSyncResult = await this.SyncLedsOfADimmerAsync(connection, device, input, cancellationToken);
-                if (dimmerSyncResult != SyncLedDimmerResult.SyncSucceeded)
+                cancellationToken.ThrowIfCancellationRequested();
+                try
                 {
-                    result = dimmerSyncResult;
+                    SyncLedDimmerResult dimmerSyncResult = await this.SyncLedsOfADimmerAsync(connection, device, input, cancellationToken);
+                    if (dimmerSyncResult != SyncLedDimmerResult.SyncSucceeded)
+                    {
+                        result = dimmerSyncResult;
+                    }
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or HomeAssistantApiCallException or TimeoutException or JsonException)
+                {
+                    this.logger.LogError(ex, "Unable to sync Z-Wave LEDs for device: {Name}", device.Name);
+                    result = SyncLedDimmerResult.Retry;
                 }
             }
             timer.Stop();
@@ -164,7 +194,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <summary>
-        /// Syncs LEDs of a dimmer
+        /// Compares one dimmer with the desired inputs and writes differences to avoid unnecessary Z-Wave traffic.
         /// </summary>
         /// <param name="connection">Home Assistant connection</param>
         /// <param name="device">Device to sync</param>
@@ -179,6 +209,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 
             for (int i = 0; i < LedInputTable.NumberOfLeds; ++i)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 LedStatusColor newColor = input.Colors[i];
                 LedBlink newBlink = input.Blinks[i];
 

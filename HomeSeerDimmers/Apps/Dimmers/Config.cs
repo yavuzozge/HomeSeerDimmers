@@ -45,9 +45,8 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         public int DimmerLedBlinkFrequency { get; set; } = 5;
 
         /// <summary>
-        /// The amount of time the last Z-Wave device discovery done will be used.
-        /// Once this time elapses, a new discovery will take place.
-        /// Zero means rediscovery with every Z0-Wave sync
+        /// How long LED synchronization and ping operations reuse their device discovery.
+        /// Zero means rediscovery with every synchronization or ping operation.
         /// </summary>
         public TimeSpan ZWaveDevicesDiscoveryValidity { get; set; }
 

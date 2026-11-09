@@ -1,7 +1,7 @@
 ﻿using NetDaemon.Client;
 using NetDaemon.Client.HomeAssistant.Model;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,11 +35,13 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <returns>Collection of Home Assistant devices</returns>
         public static async Task<IEnumerable<HassDeviceExtended>> GetDevicesExtendedAsync(this IHomeAssistantConnection connection, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             IReadOnlyCollection<HassDeviceExtended>? devices = await connection.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                 new BasicHaCommand("config/device_registry/list"),
                 cancellationToken);
 
-            return devices ?? Enumerable.Empty<HassDeviceExtended>();
+            cancellationToken.ThrowIfCancellationRequested();
+            return devices ?? throw new InvalidOperationException("The Home Assistant device registry response is null");
         }
     }
 }

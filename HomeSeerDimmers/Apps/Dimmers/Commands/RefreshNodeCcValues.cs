@@ -38,6 +38,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         public static async Task RefreshNodeCcValuesAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, ZWaveCommandClassId commandClassId, CancellationToken cancellationToken)
         {
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
+            cancellationToken.ThrowIfCancellationRequested();
 
             await connection.SendCommandAndReturnResponseRawAsync(
                 new RefreshNodeCcValuesHaCommand
@@ -46,6 +47,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                     CommandClassId = (int)commandClassId
                 },
                 cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 }

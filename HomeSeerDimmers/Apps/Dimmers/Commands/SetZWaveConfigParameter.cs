@@ -21,7 +21,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         [JsonPropertyName("device_id")] public string DeviceId { get; init; } = string.Empty;
         [JsonPropertyName("property")] public int Property { get; init; }
         [JsonPropertyName("property_key")] public int? PropertyKey { get; init; } = null;
-        [JsonPropertyName("value")] public string Value { get; init; } = string.Empty;
+        [JsonPropertyName("value")] public int Value { get; init; }
     }
 
     /// <summary>
@@ -41,7 +41,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
     public static partial class CommandConnectionExtensions
     {
         /// <summary>
-        /// Sets config parameter of a ZWave device
+        /// Sends a numeric configuration value and checks the acknowledgement so failed writes can be retried.
         /// </summary>
         /// <param name="connection">Home assistant connection</param>
         /// <param name="device">ZWave device</param>
@@ -51,9 +51,10 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the set operation fails</exception>
-        private static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int? propertyKey, string value, CancellationToken cancellationToken)
+        private static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int? propertyKey, int value, CancellationToken cancellationToken)
         {
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
+            cancellationToken.ThrowIfCancellationRequested();
 
             // Get the raw response so that we can include it in the exceptions if parsing fails
             JsonElement? rawResult = await connection.SendCommandAndReturnResponseRawAsync(
@@ -64,11 +65,16 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                     PropertyKey = propertyKey,
                     Value = value
                 },
-                cancellationToken) ?? throw new InvalidOperationException("Zwave config set result is null");
+                cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (rawResult == null)
+            {
+                throw new InvalidOperationException("Zwave config set result is null");
+            }
 
             try
             {
-                ZwaveConfigSetResult? result = rawResult is not null ? rawResult.Value.Deserialize<ZwaveConfigSetResult>() : default;
+                ZwaveConfigSetResult? result = rawResult.Value.Deserialize<ZwaveConfigSetResult>();
 
                 if (result?.Status == null)
                 {
@@ -97,7 +103,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the set operation fails</exception>
-        public static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int propertyKey, string value, CancellationToken cancellationToken)
+        public static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int propertyKey, int value, CancellationToken cancellationToken)
         {
             await connection.SetZWaveConfigParameterAsync(device, property, (int?)propertyKey, value, cancellationToken);
         }
@@ -112,7 +118,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the set operation fails</exception>
-        public static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, string value, CancellationToken cancellationToken)
+        public static async Task SetZWaveConfigParameterAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int property, int value, CancellationToken cancellationToken)
         {
             await connection.SetZWaveConfigParameterAsync(device, property, null, value, cancellationToken);
         }

@@ -13,6 +13,16 @@ namespace HomeSeerDimmerUnitTests.Commands
     public class BasicCommandConnectionExtensionsTests
     {
         [TestMethod]
+        public async Task NullRegistryResponsesAreNotTreatedAsSuccessfulEmptyDiscovery()
+        {
+            Mock<IHomeAssistantConnection> connection = new();
+            connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+                It.IsAny<BasicHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync((IReadOnlyCollection<HassDeviceExtended>?)null);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetDevicesExtendedAsync(CancellationToken.None));
+        }
+
+        [TestMethod]
         public async Task GetDevicesExtendedAsyncCallsConnectionSuccesfully()
         {
             // Arrange

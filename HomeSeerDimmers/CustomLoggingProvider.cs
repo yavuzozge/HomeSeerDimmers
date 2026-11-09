@@ -7,21 +7,20 @@ namespace Ozy.HomeSeerDimmers
     public static class CustomLoggingProvider
     {
         /// <summary>
-        ///     Adds standard Serilog logging configuration, from appsettings, as per:
-        ///     https://github.com/datalust/dotnet6-serilog-example
+        /// Uses the host configuration for Serilog and supplies console output when no sinks are configured.
         /// </summary>
-        /// <param name="builder"></param>
+        /// <param name="builder">Host builder.</param>
+        /// <returns>The host builder with Serilog configured.</returns>
         public static IHostBuilder UseCustomLogging(this IHostBuilder builder)
         {
-            IConfigurationRoot configuration = new ConfigurationBuilder()
-                .AddJsonFile("appsettings.json")
-                .Build();
-
-            Serilog.Core.Logger logger = new LoggerConfiguration()
-                .ReadFrom.Configuration(configuration)
-                .CreateLogger();
-
-            return builder.UseSerilog(logger);
+            return builder.UseSerilog((context, configuration) =>
+            {
+                configuration.ReadFrom.Configuration(context.Configuration);
+                if (!context.Configuration.GetSection("Serilog:WriteTo").Exists())
+                {
+                    configuration.WriteTo.Console();
+                }
+            });
         }
     }
 }

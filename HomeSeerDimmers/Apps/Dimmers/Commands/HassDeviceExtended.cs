@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Linq;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
@@ -50,7 +51,14 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         [property: JsonPropertyName("name_by_user")] string NameByUser,
         [property: JsonPropertyName("manufacturer")] string Manufacturer,
         [property: JsonPropertyName("model")] string Model,
-        [property: JsonPropertyName("identifiers")] IList<IList<string>> Identifiers);
+        [property: JsonPropertyName("identifiers")] IList<IList<string>> Identifiers)
+    {
+        /// <summary>
+        /// Identifies who disabled the device, or null when the device is enabled.
+        /// </summary>
+        [JsonPropertyName("disabled_by")]
+        public string? DisabledBy { get; init; }
+    }
 
     /// <summary>
     /// ZWave extensions to <see cref="HassDeviceExtended"/>
@@ -65,38 +73,32 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
         /// <returns>True if return had succeeded, false otherwise</returns>
         public static bool TryGetZWaveNodeId(this HassDeviceExtended device, out int nodeId)
         {
-            if (device == null)
+            nodeId = 0;
+            if (device?.Identifiers == null)
             {
-                nodeId = 0;
                 return false;
             }
 
-            if (!device.Identifiers.Any())
+            foreach (IList<string> identifier in device.Identifiers)
             {
-                nodeId = 0;
-                return false;
+                if (identifier == null || identifier.Count < 2
+                    || !string.Equals(identifier[0], "zwave_js", StringComparison.Ordinal)
+                    || string.IsNullOrWhiteSpace(identifier[1]))
+                {
+                    continue;
+                }
+
+                string[] parts = identifier[1].Split('-');
+                if (parts.Length >= 2
+                    && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int candidate)
+                    && candidate > 0)
+                {
+                    nodeId = candidate;
+                    return true;
+                }
             }
 
-            if (device.Identifiers[0].Count < 2)
-            {
-                nodeId = 0;
-                return false;
-            }
-
-            if (!string.Equals(device.Identifiers[0][0], "zwave_js"))
-            {
-                nodeId = 0;
-                return false;
-            }
-
-            string[] splitted = device.Identifiers[0][1].Split('-');
-            if (splitted.Length < 2)
-            {
-                nodeId = 0;
-                return false;
-            }
-
-            return int.TryParse(splitted[1], out nodeId);
+            return false;
         }
 
         /// <summary>

@@ -14,7 +14,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
     public static class DimmerLedZWaveExtensions
     {
         /// <summary>
-        /// Helper method that creates a ZWave config name for a HomeSeer dimmer LED color
+        /// Creates a ZWave config name for a HomeSeer dimmer LED color
         /// </summary>
         /// <param name="zwaveNodeId">ZWave node ID</param>
         /// <param name="index">LED index</param>
@@ -25,7 +25,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         }
 
         /// <summary>
-        /// Helper method that creates a ZWave config name for a HomeSeer dimmer LED blink
+        /// Builds a blink parameter key using the LED's bit mask so its individual blink value can be read.
         /// </summary>
         /// <param name="zwaveNodeId">ZWave node ID</param>
         /// <param name="index">LED index</param>
@@ -36,7 +36,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         }
 
         /// <summary>
-        /// Helper method that creates a ZWave config name for a HomeSeer dimmer custom LED status mode
+        /// Builds the status-mode key so synchronization can check whether custom LED colors are enabled.
         /// </summary>
         /// <param name="zwaveNodeId">ZWave node ID</param>
         /// <returns>ZWave config name</returns>
@@ -46,7 +46,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         }
 
         /// <summary>
-        /// Helper method that creates a ZWave config name for a HomeSeer blink frequency
+        /// Builds the blink-interval key so synchronization can compare the device's timing with the configured timing.
         /// </summary>
         /// <param name="zwaveNodeId">ZWave node ID</param>
         /// <returns>ZWave config name</returns>
@@ -113,7 +113,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
         public static async Task SetZWaveLedColorAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int index, LedStatusColor color, CancellationToken cancellationToken)
         {
-            await connection.SetZWaveConfigParameterAsync(device, 21 + index, ((int)color).ToString(), cancellationToken);
+            await connection.SetZWaveConfigParameterAsync(device, 21 + index, (int)color, cancellationToken);
         }
 
         /// <summary>
@@ -121,14 +121,14 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         /// </summary>
         /// <param name="connection">Home assistant connection</param>
         /// <param name="device">HomeSeer dimmer device</param>
-        /// <param name="index">LED index (7 top, 0 bottom)</param>
+        /// <param name="index">Zero-based LED index, from 0 at the bottom to 6 at the top.</param>
         /// <param name="blink">Whether the LED should blink</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Awaitable task</returns>
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
         public static async Task SetZWaveLedBlinkAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int index, LedBlink blink, CancellationToken cancellationToken)
         {
-            await connection.SetZWaveConfigParameterAsync(device, 31, 1 << index, blink == LedBlink.On ? "1" : "0", cancellationToken);
+            await connection.SetZWaveConfigParameterAsync(device, 31, 1 << index, (int)blink, cancellationToken);
         }
 
         /// <summary>
@@ -142,11 +142,11 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
         public static async Task SetZWaveCustomLedStatusModeAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, CustomLedStatusMode mode, CancellationToken cancellationToken)
         {
-            await connection.SetZWaveConfigParameterAsync(device, 13, ((int)mode).ToString(), cancellationToken);
+            await connection.SetZWaveConfigParameterAsync(device, 13, (int)mode, cancellationToken);
         }
 
         /// <summary>
-        /// Sets the current enableblink frequency of a HomeSeer dimmer ZWave device
+        /// Sets the blink interval of a HomeSeer dimmer in units of 100 milliseconds.
         /// </summary>
         /// <param name="connection">Home assistant connection</param>
         /// <param name="device">HomeSeer dimmer device</param>
@@ -156,7 +156,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice
         /// <exception cref="InvalidOperationException">Thrown when the device is not a ZWave device</exception>
         public static async Task SetZWaveBlinkFrequencyAsync(this IHomeAssistantConnection connection, HassDeviceExtended device, int blinkFrequency, CancellationToken cancellationToken)
         {
-            await connection.SetZWaveConfigParameterAsync(device, 30, blinkFrequency.ToString(), cancellationToken);
+            await connection.SetZWaveConfigParameterAsync(device, 30, blinkFrequency, cancellationToken);
         }
     }
 }
