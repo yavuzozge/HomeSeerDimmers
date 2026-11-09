@@ -35,17 +35,23 @@ This project is created in C# and .NET using [NetDaemon](https://netdaemon.xyz/)
 4. Modify `appsettings.json` of NetDaemon -- mine looks smt like following:
 ```JSON
 {
-  "Logging": {
-    "LogLevel": {
+  "Serilog": {
+    "MinimumLevel": {
       "Default": "Debug",
-      "Microsoft": "Warning"
-    }
+      "Override": {
+        "Microsoft": "Warning"
+      }
+    },
+    "WriteTo": [ "Console" ]
   },
   "NetDaemon": {
     "ApplicationConfigurationFolder": "./Apps"
-  },
+  }
 }
 ```
+Console logging is enabled by default when no Serilog sinks are configured. Logging uses
+the host configuration, including environment-specific settings and environment variables.
+
 5. Define your sensors in HA -- one sensor for each LED color and blink status. Below are some examples using templated enitites (in `template.yaml`):
 <!-- {% raw %} -->
 ```YAML
@@ -93,7 +99,9 @@ For supported configuration, see [Config](HomeSeerDimmers/Apps/Dimmers/Config.cs
 
 ## Compiling the code
 
-The project uses [.NET](https://dotnet.microsoft.com/en-us/download) and is created in VS 2022 but you can also use VS Code with .NET extensions.
+The project requires [.NET SDK](https://dotnet.microsoft.com/en-us/download).
+The NetDaemon runtime used for deployment must also support .NET. You can use
+Visual Studio or VS Code with .NET extensions.
 
 Alternativelty, it is also possible to compile from the command line by first opening a command prompt, go to the the root of the repo and then
 ```

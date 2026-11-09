@@ -17,7 +17,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 9.0.x
+          dotnet-version: 10.0.x
       - name: Restore dependencies
         run: dotnet restore
       - name: Build
@@ -28,8 +28,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with: 
           name: HomeSeer-Dimmers-Download
-          path: ./HomeSeerDimmers/bin/Release/net9.0
-      - run: zip -r HomeSeerDimmers.zip ./HomeSeerDimmers/bin/Release/net9.0
+          path: ./HomeSeerDimmers/bin/Release/net10.0
+      - run: zip -r HomeSeerDimmers.zip ./HomeSeerDimmers/bin/Release/net10.0
       - name: Create a GitHub release
         uses: ncipollo/release-action@v1
         with:
