@@ -35,13 +35,13 @@ namespace HomeSeerDimmerUnitTests
         internal static Mock<IHomeAssistantConnection> CreateConnection(params HassDeviceExtended[] devices)
         {
             Mock<IHomeAssistantConnection> connection = new();
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                 It.IsAny<BasicHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(devices);
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((GetZWaveConfigParametersHaCommand command, CancellationToken _) =>
                     CreateConfiguration(devices.Single(device => device.Id == command.DeviceId)));
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JsonSerializer.SerializeToElement(new { value_id = "value", status = "accepted" }));
             return connection;
         }

@@ -19,7 +19,7 @@ namespace HomeSeerDimmerUnitTests
         {
             string output = CaptureLogOutput(new Dictionary<string, string?>());
 
-            output.Should().Contain("Visible warning");
+            _ = output.Should().Contain("Visible warning");
         }
 
         [TestMethod]
@@ -30,7 +30,7 @@ namespace HomeSeerDimmerUnitTests
                 ["Serilog:WriteTo:0:Name"] = "Console"
             });
 
-            output.Split("Visible warning", StringSplitOptions.None).Should().HaveCount(2);
+            _ = output.Split("Visible warning", StringSplitOptions.None).Should().HaveCount(2);
         }
 
         [TestMethod]
@@ -41,7 +41,7 @@ namespace HomeSeerDimmerUnitTests
                 ["Serilog:MinimumLevel:Default"] = "Warning"
             });
 
-            output.Should().Contain("Visible warning").And.NotContain("Hidden information");
+            _ = output.Should().Contain("Visible warning").And.NotContain("Hidden information");
         }
 
         /// <summary>

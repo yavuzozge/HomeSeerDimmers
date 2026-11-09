@@ -1,10 +1,11 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using NetDaemon.AppModel;
 using NetDaemon.Client;
 using NetDaemon.Client.Exceptions;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.Commands;
 using Ozy.HomeSeerDimmers.Apps.Dimmers.HomeSeerDevice;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
@@ -16,79 +17,58 @@ using System.Threading.Tasks;
 namespace Ozy.HomeSeerDimmers.Apps.Dimmers
 {
     /// <summary>
-    /// Syncs dimmers
+    /// Synchronizes supported dimmers with desired LED settings and retries failed devices once.
     /// </summary>
     public class DimmerSyncManager : IDimmerSyncManager
     {
         /// <summary>
-        /// Indicates whether a device needs another sync attempt so failed updates can be retried.
-        /// </summary>
-        private enum SyncLedDimmerResult
-        {
-            /// <summary>
-            /// Synchronization succeeded, so no further attempts are needed.
-            /// </summary>
-            SyncSucceeded,
-
-            /// <summary>
-            /// A device update failed, so another synchronization pass should be attempted.
-            /// </summary>
-            Retry
-        }
-
-        /// <summary>
-        /// Identifies HomeSeer devices in the registry so discovery excludes other manufacturers.
+        /// Identifies HomeSeer devices so discovery excludes other manufacturers.
         /// </summary>
         private const string HomeseerManufacturer = "HomeSeer Technologies";
 
         /// <summary>
-        /// Limits discovery to models whose LED configuration parameters are supported.
+        /// Limits discovery to models whose LED parameter layout is supported.
         /// </summary>
-        private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels = ImmutableHashSet.Create(
-            StringComparer.InvariantCulture,
-            new[]
-            {
-                "HS-WD200+", // => https://docs.homeseer.com/products/hs-wd200
-                "HS-WX300" // => https://docs.homeseer.com/products/hs-wx300
-            });
+        private static readonly ImmutableHashSet<string> SupportedHomeseerDimmerModels =
+            ImmutableHashSet.Create(StringComparer.Ordinal, "HS-WD200+", "HS-WX300");
 
         /// <summary>
-        /// logger
+        /// Records device updates and failures so synchronization problems remain visible.
         /// </summary>
         private readonly ILogger<DimmerSyncManager> logger;
 
         /// <summary>
-        /// App configuration
+        /// Supplies desired blink timing and discovery cache duration.
         /// </summary>
         private readonly IAppConfig<Config> appConfig;
 
         /// <summary>
-        /// Home assistant connection runner
+        /// Supplies the current connection rather than retaining a disconnected client.
         /// </summary>
         private readonly IHomeAssistantRunner runner;
 
         /// <summary>
-        /// Supplies discovery time so cache expiry can be controlled without waiting in tests.
+        /// Supplies discovery time so cache expiry can be controlled in tests.
         /// </summary>
         private readonly IScheduler scheduler;
 
         /// <summary>
-        /// Discovered dimmer devices
+        /// Caches supported devices so every input change does not request the registry again.
         /// </summary>
         private ImmutableArray<HassDeviceExtended> dimmerDevices = [];
 
         /// <summary>
-        /// Marks when cached discovery expires so network changes are picked up by a later sync.
+        /// Marks when discovery expires so changes to the network are picked up later.
         /// </summary>
         private DateTimeOffset nextDiscoveryTime = DateTimeOffset.MinValue;
 
         /// <summary>
-        /// ctor
+        /// Creates a manager that uses the current connection and configured discovery timing.
         /// </summary>
-        /// <param name="logger">Logger</param>
-        /// <param name="appConfig">App configuration</param>
-        /// <param name="runner">Home assistant connection runner</param>
-        /// <param name="scheduler">Scheduler that supplies the discovery clock.</param>
+        /// <param name="logger">Synchronization logger.</param>
+        /// <param name="appConfig">Desired device settings and discovery timing.</param>
+        /// <param name="runner">Home Assistant connection runner.</param>
+        /// <param name="scheduler">Clock used for discovery expiry.</param>
         public DimmerSyncManager(
             ILogger<DimmerSyncManager> logger,
             IAppConfig<Config> appConfig,
@@ -99,7 +79,6 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             ArgumentNullException.ThrowIfNull(appConfig);
             ArgumentNullException.ThrowIfNull(runner);
             ArgumentNullException.ThrowIfNull(scheduler);
-
             this.logger = logger;
             this.appConfig = appConfig;
             this.runner = runner;
@@ -107,7 +86,25 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         }
 
         /// <inheritdoc />
-        public async Task SyncDimmersToAsync(LedInputTable input, CancellationToken cancellationToken)
+        public Task SyncDimmersToAsync(LedInputTable input, CancellationToken cancellationToken)
+        {
+            return this.SyncDimmersAsync(input, false, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task ReconcileDimmersToAsync(LedInputTable input, CancellationToken cancellationToken)
+        {
+            return this.SyncDimmersAsync(input, true, cancellationToken);
+        }
+
+        /// <summary>
+        /// Shares device selection and bounded retries while keeping cached updates separate from physical reconciliation.
+        /// </summary>
+        /// <param name="input">Desired LED settings.</param>
+        /// <param name="readDevice">Whether each attempt must read the physical configuration.</param>
+        /// <param name="cancellationToken">Cancels registry, device reads, and writes.</param>
+        /// <returns>A task that completes after device updates and their bounded retry.</returns>
+        private async Task SyncDimmersAsync(LedInputTable input, bool readDevice, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             IHomeAssistantConnection? connection = this.runner.CurrentConnection;
@@ -116,217 +113,141 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
                 this.logger.LogError("The Home Assistant connection obtained was null, skipping sync");
                 return;
             }
-
             if (this.nextDiscoveryTime <= this.scheduler.Now)
             {
                 await this.DiscoverDimmersAsync(connection, cancellationToken);
-
                 this.nextDiscoveryTime = this.scheduler.Now + this.appConfig.Value.ZWaveDevicesDiscoveryValidity;
             }
 
-            SyncLedDimmerResult result = await this.SyncLedsOfDiscoveredDimmersAsync(connection, input, cancellationToken);
-            if (result == SyncLedDimmerResult.Retry)
+            ImmutableArray<HassDeviceExtended> failed = await this.SyncLedsOfDimmersAsync(
+                connection, this.dimmerDevices, input, readDevice, cancellationToken);
+            if (!failed.IsEmpty)
             {
                 this.nextDiscoveryTime = DateTimeOffset.MinValue;
-                // retry only once
-                this.logger.LogInformation("Retrying");
-                await this.SyncLedsOfDiscoveredDimmersAsync(connection, input, cancellationToken);
+                this.logger.LogInformation("Retrying {Count} failed dimmers", failed.Length);
+                _ = await this.SyncLedsOfDimmersAsync(connection, failed, input, readDevice, cancellationToken);
             }
         }
 
         /// <summary>
-        /// Refreshes the supported, enabled dimmers so syncs use the current device registry.
+        /// Refreshes enabled supported devices so syncs follow the current registry.
         /// </summary>
-        /// <param name="connection">Home Assistant connection</param>
-        /// <param name="token">Cancellation token</param>
-        /// <returns>Awaitable task</returns>
+        /// <param name="connection">Current Home Assistant connection.</param>
+        /// <param name="token">Cancels registry requests.</param>
+        /// <returns>A task that completes after the discovery cache is updated.</returns>
         private async Task DiscoverDimmersAsync(IHomeAssistantConnection connection, CancellationToken token)
         {
             this.logger.LogInformation("Discovering HomeSeer dimmers:");
-
-            ImmutableArray<HassDeviceExtended> dimmerDevices =
-                (await connection.GetDevicesExtendedAsync(token))
-                    .Where(d => d.DisabledBy == null && d.TryGetZWaveNodeId(out _)
-                        && string.Equals(HomeseerManufacturer, d.Manufacturer, StringComparison.InvariantCultureIgnoreCase)
-                        && SupportedHomeseerDimmerModels.Contains(d.Model))
-                    .ToImmutableArray();
-
-            foreach (HassDeviceExtended device in dimmerDevices)
+            this.dimmerDevices = (await connection.GetDevicesExtendedAsync(token))
+                .Where(d => d.DisabledBy == null && d.TryGetZWaveNodeId(out _)
+                    && string.Equals(HomeseerManufacturer, d.Manufacturer, StringComparison.OrdinalIgnoreCase)
+                    && SupportedHomeseerDimmerModels.Contains(d.Model))
+                .ToImmutableArray();
+            foreach (HassDeviceExtended device in this.dimmerDevices)
             {
                 this.logger.LogInformation("  device: {Name}, {Manufacturer}, {Model}", device.Name, device.Manufacturer, device.Model);
             }
-
-            this.dimmerDevices = dimmerDevices;
         }
 
         /// <summary>
-        /// Syncs each discovered dimmer independently so one device failure does not block healthy devices.
+        /// Processes devices independently and returns only failures so healthy devices are not retried.
         /// </summary>
-        /// <param name="connection">Home Assistant connection</param>
-        /// <param name="input">LED input table</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Result of the sync</returns>
-        private async Task<SyncLedDimmerResult> SyncLedsOfDiscoveredDimmersAsync(IHomeAssistantConnection connection, LedInputTable input, CancellationToken cancellationToken)
+        /// <param name="connection">Current Home Assistant connection.</param>
+        /// <param name="devices">Devices selected for this attempt.</param>
+        /// <param name="input">Desired LED settings.</param>
+        /// <param name="readDevice">Whether configuration is read from the physical device.</param>
+        /// <param name="token">Cancels device requests.</param>
+        /// <returns>Devices that need another attempt.</returns>
+        private async Task<ImmutableArray<HassDeviceExtended>> SyncLedsOfDimmersAsync(
+            IHomeAssistantConnection connection, ImmutableArray<HassDeviceExtended> devices, LedInputTable input, bool readDevice, CancellationToken token)
         {
             Stopwatch timer = Stopwatch.StartNew();
-            SyncLedDimmerResult result = SyncLedDimmerResult.SyncSucceeded;
-            foreach (HassDeviceExtended device in this.dimmerDevices)
+            ImmutableArray<HassDeviceExtended>.Builder? failed = null;
+            foreach (HassDeviceExtended device in devices)
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                token.ThrowIfCancellationRequested();
                 try
                 {
-                    SyncLedDimmerResult dimmerSyncResult = await this.SyncLedsOfADimmerAsync(connection, device, input, cancellationToken);
-                    if (dimmerSyncResult != SyncLedDimmerResult.SyncSucceeded)
+                    if (!await this.SyncLedsOfADimmerAsync(connection, device, input, readDevice, token))
                     {
-                        result = dimmerSyncResult;
+                        (failed ??= ImmutableArray.CreateBuilder<HassDeviceExtended>()).Add(device);
                     }
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or HomeAssistantApiCallException or TimeoutException or JsonException)
                 {
                     this.logger.LogError(ex, "Unable to sync Z-Wave LEDs for device: {Name}", device.Name);
-                    result = SyncLedDimmerResult.Retry;
+                    (failed ??= ImmutableArray.CreateBuilder<HassDeviceExtended>()).Add(device);
                 }
             }
-            timer.Stop();
-            this.logger.LogInformation("Dimmer LED syncs completed in {Elapsed}: {Result}", timer.Elapsed, result);
-
-            return result;
+            this.logger.LogInformation("Dimmer LED syncs completed in {Elapsed}; {FailedCount} failed", timer.Elapsed, failed?.Count ?? 0);
+            return failed?.ToImmutable() ?? ImmutableArray<HassDeviceExtended>.Empty;
         }
 
         /// <summary>
-        /// Compares one dimmer with the desired inputs and writes differences to avoid unnecessary Z-Wave traffic.
+        /// Compares one device with its desired settings while leaving parameter encoding to the device helpers.
         /// </summary>
-        /// <param name="connection">Home Assistant connection</param>
-        /// <param name="device">Device to sync</param>
-        /// <param name="input">LED input table</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Result of the sync</returns>
-        private async Task<SyncLedDimmerResult> SyncLedsOfADimmerAsync(IHomeAssistantConnection connection, HassDeviceExtended device, LedInputTable input, CancellationToken cancellationToken)
+        /// <param name="connection">Current Home Assistant connection.</param>
+        /// <param name="device">Device being synchronized.</param>
+        /// <param name="input">Desired LED settings.</param>
+        /// <param name="readDevice">Whether configuration is read from the physical device.</param>
+        /// <param name="token">Cancels device requests.</param>
+        /// <returns>Whether every required setting was updated successfully.</returns>
+        private async Task<bool> SyncLedsOfADimmerAsync(
+            IHomeAssistantConnection connection, HassDeviceExtended device, LedInputTable input, bool readDevice, CancellationToken token)
         {
-            DimmerConfig config = await connection.GetZWaveDimmerConfigAsync(device, cancellationToken);
-
-            SyncLedDimmerResult result = SyncLedDimmerResult.SyncSucceeded;
-
+            DimmerConfig config = readDevice
+                ? await connection.ReadZWaveDimmerConfigAsync(device, token)
+                : await connection.GetZWaveDimmerConfigAsync(device, token);
+            bool succeeded = true;
             for (int i = 0; i < LedInputTable.NumberOfLeds; ++i)
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                LedStatusColor newColor = input.Colors[i];
-                LedBlink newBlink = input.Blinks[i];
-
-                if (newColor == config.Colors[i])
-                {
-                    this.logger.LogTrace(
-                        "No update needed for Z-Wave LED color: {Name}[{Index}]: {CurrentColor}",
-                        device.Name,
-                        i,
-                        config.Colors[i]);
-                }
-                else
-                {
-                    this.logger.LogInformation(
-                        "Updating Z-Wave LED color for: {Name}[{Index}]: {CurrentColor} => {NewColor}",
-                        device.Name,
-                        i,
-                        config.Colors[i],
-                        newColor);
-
-                    try
-                    {
-                        await connection.SetZWaveLedColorAsync(device, i, newColor, cancellationToken);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        this.logger.LogError(ex, "Unable to set Z-Wave LED color for device: {Name}", device.Name);
-
-                        result = SyncLedDimmerResult.Retry;
-                    }
-                }
-
-                if (newBlink == config.Blinks[i])
-                {
-                    this.logger.LogTrace(
-                        "No update needed for Z-Wave LED blink: {Name}[{Index}]: {CurrentBlink}",
-                        device.Name,
-                        i,
-                        config.Blinks[i] == LedBlink.On ? "*" : ".");
-                }
-                else
-                {
-                    this.logger.LogInformation(
-                        "Updating Z-Wave LED blink for: {Name}[{Index}]: {CurrentBlink} => {NewBlink}",
-                        device.Name,
-                        i,
-                        config.Blinks[i] == LedBlink.On ? "*" : ".",
-                        newBlink == LedBlink.On ? "*" : ".");
-
-                    try
-                    {
-                        await connection.SetZWaveLedBlinkAsync(device, i, newBlink, cancellationToken);
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        this.logger.LogError(ex, "Unable to set Z-Wave LED blink for device: {Name}", device.Name);
-
-                        result = SyncLedDimmerResult.Retry;
-                    }
-                }
+                succeeded &= await this.SyncSettingAsync(device, $"LED {i} color", config.Colors[i], input.Colors[i],
+                    () => connection.SetZWaveLedColorAsync(device, i, input.Colors[i], token), token);
+                succeeded &= await this.SyncSettingAsync(device, $"LED {i} blink", config.Blinks[i], input.Blinks[i],
+                    () => connection.SetZWaveLedBlinkAsync(device, i, input.Blinks[i], token), token);
             }
+            succeeded &= await this.SyncSettingAsync(device, "custom LED status mode", config.CustomLedStatusMode, CustomLedStatusMode.Enable,
+                () => connection.SetZWaveCustomLedStatusModeAsync(device, CustomLedStatusMode.Enable, token), token);
+            int blinkFrequency = this.appConfig.Value.DimmerLedBlinkFrequency;
+            succeeded &= await this.SyncSettingAsync(device, "LED blink frequency", config.BlinkFrequency, blinkFrequency,
+                () => connection.SetZWaveBlinkFrequencyAsync(device, blinkFrequency, token), token);
+            return succeeded;
+        }
 
-            if (config.CustomLedStatusMode == CustomLedStatusMode.Enable)
+        /// <summary>
+        /// Applies one changed setting with shared comparison, logging, and failure handling.
+        /// </summary>
+        /// <typeparam name="T">Device setting type.</typeparam>
+        /// <param name="device">Device being updated.</param>
+        /// <param name="setting">Setting name used in diagnostic messages.</param>
+        /// <param name="current">Reported device value.</param>
+        /// <param name="desired">Requested value.</param>
+        /// <param name="write">Device helper that writes the requested value.</param>
+        /// <param name="token">Cancels the operation before a write is started.</param>
+        /// <returns>Whether the setting already matched or its write succeeded.</returns>
+        private async Task<bool> SyncSettingAsync<T>(
+            HassDeviceExtended device, string setting, T current, T desired, Func<Task> write, CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            if (EqualityComparer<T>.Default.Equals(current, desired))
             {
-                this.logger.LogTrace(
-                    "No update needed for Z-Wave EnableCustomLedStatusMode: {Name}: {Mode}",
-                    device.Name,
-                    config.CustomLedStatusMode);
+                if (this.logger.IsEnabled(LogLevel.Trace))
+                {
+                    this.logger.LogTrace("No update needed for Z-Wave {Setting}: {Name}: {Current}", setting, device.Name, current);
+                }
+                return true;
             }
-            else
+            this.logger.LogInformation("Updating Z-Wave {Setting}: {Name}: {Current} => {Desired}", setting, device.Name, current, desired);
+            try
             {
-                this.logger.LogInformation(
-                    "Updating Z-Wave EnableCustomLedStatusMode for: {Name}: {CurrentMode} => {NewMode}",
-                    device.Name,
-                    config.CustomLedStatusMode,
-                    CustomLedStatusMode.Enable);
-
-                try
-                {
-                    await connection.SetZWaveCustomLedStatusModeAsync(device, CustomLedStatusMode.Enable, cancellationToken);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    this.logger.LogError(ex, "Unable to set Z-Wave EnableCustomLedStatusMode for device: {Name}", device.Name);
-
-                    result = SyncLedDimmerResult.Retry;
-                }
+                await write();
+                return true;
             }
-
-            if (config.BlinkFrequency == this.appConfig.Value.DimmerLedBlinkFrequency)
+            catch (Exception ex) when (ex is InvalidOperationException or HomeAssistantApiCallException or TimeoutException or JsonException)
             {
-                this.logger.LogTrace(
-                    "No update needed for Z-Wave LED blink frequency: {Name}: {CurrentBlinkFrequency}",
-                    device.Name,
-                    config.BlinkFrequency);
+                this.logger.LogError(ex, "Unable to set Z-Wave {Setting} for device: {Name}", setting, device.Name);
+                return false;
             }
-            else
-            {
-                this.logger.LogInformation(
-                    "Updating Z-Wave LED blink frequency for: {Name}: {CurrentBlinkFrequency} => {NewBlinkFrequency}",
-                    device.Name,
-                    config.BlinkFrequency,
-                    this.appConfig.Value.DimmerLedBlinkFrequency);
-
-                try
-                {
-                    await connection.SetZWaveBlinkFrequencyAsync(device, this.appConfig.Value.DimmerLedBlinkFrequency, cancellationToken);
-                }
-                catch (InvalidOperationException ex)
-                {
-                    this.logger.LogError(ex, "Unable to set Z-Wave LED blink frequency for device: {Name}", device.Name);
-
-                    result = SyncLedDimmerResult.Retry;
-                }
-            }
-
-            return result;
         }
     }
 }

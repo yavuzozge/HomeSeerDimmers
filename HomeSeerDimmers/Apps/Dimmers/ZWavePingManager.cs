@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Reactive.Concurrency;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,7 +79,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
             IHomeAssistantConnection? connection = this.runner.CurrentConnection;
             if (connection == null)
             {
-                this.logger.LogError("The Home Assistant connection obtained was null, skipping sync");
+                this.logger.LogError("The Home Assistant connection obtained was null, skipping ping");
                 return;
             }
 
@@ -119,22 +118,40 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             this.logger.LogInformation("Discovering Z-Wave devices to ping:");
 
-            IEnumerable<HassDeviceExtended> devices = await connection.GetDevicesExtendedAsync(token);
-            this.zwavePingDeviceMap = devices
-                .Where(d => d.DisabledBy == null && d.TryGetZWaveNodeId(out _))
-                .Select(d => (Device: d, this.appConfig.Value.ZWavePingDevices.FirstOrDefault(pd => string.Equals(pd.Name, d.Name, StringComparison.Ordinal))?.RefreshCommandClassId))
-                .Where(ping => ping.RefreshCommandClassId != null)
-                .Select(ping => (ping.Device, ping.RefreshCommandClassId ?? ZWaveCommandClassId.NoOperation))
-                .ToImmutableArray();
-
-            foreach ((HassDeviceExtended device, ZWaveCommandClassId refreshCommandClassId) in this.zwavePingDeviceMap)
+            Dictionary<string, ZWaveCommandClassId> configured = new(StringComparer.Ordinal);
+            foreach (PingZwaveDevice device in this.appConfig.Value.ZWavePingDevices)
             {
-                this.logger.LogInformation("  {Name}: {class}, {Manufacturer}, {Model}", device.Name, refreshCommandClassId, device.Manufacturer, device.Model);
+                if (!string.IsNullOrWhiteSpace(device.Name))
+                {
+                    _ = configured.TryAdd(device.Name, device.RefreshCommandClassId);
+                }
             }
+            HashSet<string> found = new(StringComparer.Ordinal);
+            ImmutableArray<(HassDeviceExtended Device, ZWaveCommandClassId RefreshCommandClassId)>.Builder selected = ImmutableArray.CreateBuilder<(HassDeviceExtended, ZWaveCommandClassId)>();
+            foreach (HassDeviceExtended device in await connection.GetDevicesExtendedAsync(token))
+            {
+                if (device.DisabledBy != null || !device.TryGetZWaveNodeId(out _))
+                {
+                    continue;
+                }
+                string name = device.Name;
+                if (string.IsNullOrWhiteSpace(name) || !configured.TryGetValue(name, out ZWaveCommandClassId commandClass))
+                {
+                    name = device.NameByUser;
+                    if (string.IsNullOrWhiteSpace(name) || !configured.TryGetValue(name, out commandClass))
+                    {
+                        continue;
+                    }
+                }
+                _ = found.Add(name);
+                selected.Add((device, commandClass));
+                this.logger.LogInformation("  {Name}: {class}, {Manufacturer}, {Model}", name, commandClass, device.Manufacturer, device.Model);
+            }
+            this.zwavePingDeviceMap = selected.ToImmutable();
 
             foreach (PingZwaveDevice configuredDevice in this.appConfig.Value.ZWavePingDevices)
             {
-                if (!this.zwavePingDeviceMap.Any(ping => string.Equals(ping.Device.Name, configuredDevice.Name, StringComparison.Ordinal)))
+                if (string.IsNullOrWhiteSpace(configuredDevice.Name) || !found.Contains(configuredDevice.Name))
                 {
                     this.logger.LogWarning("Configured Z-Wave ping device was not found or is disabled: {Name}", configuredDevice.Name);
                 }

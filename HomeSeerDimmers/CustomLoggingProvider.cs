@@ -15,10 +15,10 @@ namespace Ozy.HomeSeerDimmers
         {
             return builder.UseSerilog((context, configuration) =>
             {
-                configuration.ReadFrom.Configuration(context.Configuration);
+                _ = configuration.ReadFrom.Configuration(context.Configuration);
                 if (!context.Configuration.GetSection("Serilog:WriteTo").Exists())
                 {
-                    configuration.WriteTo.Console();
+                    _ = configuration.WriteTo.Console();
                 }
             });
         }

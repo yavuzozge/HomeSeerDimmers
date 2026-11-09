@@ -81,17 +81,28 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
 
             foreach (IList<string> identifier in device.Identifiers)
             {
-                if (identifier == null || identifier.Count < 2
+                if (identifier == null || identifier.Count != 2
                     || !string.Equals(identifier[0], "zwave_js", StringComparison.Ordinal)
                     || string.IsNullOrWhiteSpace(identifier[1]))
                 {
                     continue;
                 }
 
-                string[] parts = identifier[1].Split('-');
-                if (parts.Length >= 2
-                    && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out int candidate)
-                    && candidate > 0)
+                ReadOnlySpan<char> value = identifier[1];
+                int separator = value.IndexOf('-');
+                if (separator <= 0
+                    || !uint.TryParse(value[..separator], NumberStyles.None, CultureInfo.InvariantCulture, out uint homeId)
+                    || homeId == 0)
+                {
+                    continue;
+                }
+
+                ReadOnlySpan<char> nodeAndSuffix = value[(separator + 1)..];
+                int suffixSeparator = nodeAndSuffix.IndexOf('-');
+                ReadOnlySpan<char> node = suffixSeparator < 0 ? nodeAndSuffix : nodeAndSuffix[..suffixSeparator];
+                if (int.TryParse(node, NumberStyles.None, CultureInfo.InvariantCulture, out int candidate)
+                    && candidate > 0
+                    && (suffixSeparator < 0 || IsValidIdentifierSuffix(nodeAndSuffix[(suffixSeparator + 1)..])))
                 {
                     nodeId = candidate;
                     return true;
@@ -99,6 +110,30 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Checks the product, endpoint, or endpoint-group suffix used by Home Assistant.
+        /// </summary>
+        /// <param name="suffix">Identifier suffix after the node ID.</param>
+        /// <returns>Whether the suffix has a supported numeric format.</returns>
+        private static bool IsValidIdentifierSuffix(ReadOnlySpan<char> suffix)
+        {
+            if (suffix.StartsWith("g", StringComparison.Ordinal))
+            {
+                return int.TryParse(suffix[1..], NumberStyles.None, CultureInfo.InvariantCulture, out int groupId) && groupId > 0;
+            }
+
+            if (!suffix.Contains(':'))
+            {
+                return int.TryParse(suffix, NumberStyles.None, CultureInfo.InvariantCulture, out int endpoint) && endpoint > 0;
+            }
+
+            Span<Range> parts = stackalloc Range[4];
+            return suffix.Split(parts, ':') == 3
+                && ushort.TryParse(suffix[parts[0]], NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                && ushort.TryParse(suffix[parts[1]], NumberStyles.None, CultureInfo.InvariantCulture, out _)
+                && ushort.TryParse(suffix[parts[2]], NumberStyles.None, CultureInfo.InvariantCulture, out _);
         }
 
         /// <summary>

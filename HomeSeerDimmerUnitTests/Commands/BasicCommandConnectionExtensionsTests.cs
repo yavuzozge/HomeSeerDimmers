@@ -16,10 +16,22 @@ namespace HomeSeerDimmerUnitTests.Commands
         public async Task NullRegistryResponsesAreNotTreatedAsSuccessfulEmptyDiscovery()
         {
             Mock<IHomeAssistantConnection> connection = new();
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                 It.IsAny<BasicHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync((IReadOnlyCollection<HassDeviceExtended>?)null);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetDevicesExtendedAsync(CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetDevicesExtendedAsync(CancellationToken.None));
+        }
+
+        [TestMethod]
+        public async Task CancellationAfterDiscoveryIsReportedBeforeUsingTheResponse()
+        {
+            Mock<IHomeAssistantConnection> connection = new();
+            using CancellationTokenSource cancellation = new();
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+                It.IsAny<BasicHaCommand>(), cancellation.Token)).Callback(cancellation.Cancel)
+                .ReturnsAsync((IReadOnlyCollection<HassDeviceExtended>?)null);
+
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetDevicesExtendedAsync(cancellation.Token));
         }
 
         [TestMethod]
@@ -42,7 +54,7 @@ namespace HomeSeerDimmerUnitTests.Commands
                     }
             });
 
-            mockConnection
+            _ = mockConnection
                 .Setup(m => m.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                     It.Is<BasicHaCommand>(c => string.Equals(c.Type, "config/device_registry/list", StringComparison.Ordinal)),
                     CancellationToken.None))
@@ -52,7 +64,7 @@ namespace HomeSeerDimmerUnitTests.Commands
             IEnumerable<HassDeviceExtended> result = await mockConnection.Object.GetDevicesExtendedAsync(CancellationToken.None);
 
             // Assert
-            result.Should().BeEquivalentTo(new[] { device });
+            _ = result.Should().BeEquivalentTo(new[] { device });
         }
     }
 }

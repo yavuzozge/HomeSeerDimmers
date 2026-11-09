@@ -17,9 +17,9 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
         {
             return hostBuilder.ConfigureServices(delegate (HostBuilderContext context, IServiceCollection services)
             {
-                services.AddScoped<ILedInputMonitor, LedInputMonitor>();
-                services.AddScoped<IDimmerSyncManager, DimmerSyncManager>();
-                services.AddScoped<IZWavePingManager, ZWavePingManager>();
+                _ = services.AddScoped<ILedInputMonitor, LedInputMonitor>();
+                _ = services.AddScoped<IDimmerSyncManager, DimmerSyncManager>();
+                _ = services.AddScoped<IZWavePingManager, ZWavePingManager>();
             });
         }
     }

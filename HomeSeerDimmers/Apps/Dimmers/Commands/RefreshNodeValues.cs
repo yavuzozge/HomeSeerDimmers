@@ -38,7 +38,7 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
             InvalidZWaveDeviceException.ThrowIfInvalid(device);
             cancellationToken.ThrowIfCancellationRequested();
 
-            await connection.SendCommandAndReturnResponseRawAsync(
+            _ = await connection.SendCommandAndReturnResponseRawAsync(
                 new RefreshNodeValuesHaCommand
                 {
                     DeviceId = device.Id

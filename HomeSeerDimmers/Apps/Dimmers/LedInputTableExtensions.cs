@@ -8,25 +8,29 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers
     public static class LedInputTableExtensions
     {
         /// <summary>
-        /// Returns a copy of input table that contains the color in the given index
+        /// Returns a table with the color in the given index, reusing unchanged tables
         /// </summary>
         /// <param name="idx">Index</param>
         /// <param name="color">Color</param>
-        /// <returns>New instance of <see cref="LedInputTable"/> that contains the change</returns>
+        /// <returns>The original table when unchanged, otherwise an updated copy</returns>
         public static LedInputTable CreateWithColor(this LedInputTable table, int idx, LedStatusColor color)
         {
-            return new LedInputTable(table.Colors.SetItem(idx, color), table.Blinks);
+            return idx >= 0 && idx < table.Colors.Length && table.Colors[idx] == color
+                ? table
+                : new LedInputTable(table.Colors.SetItem(idx, color), table.Blinks);
         }
 
         /// <summary>
-        /// Returns a copy of input table that contains the blink in the given index
+        /// Returns a table with the blink in the given index, reusing unchanged tables
         /// </summary>
         /// <param name="idx">Index</param>
         /// <param name="blink">Blink</param>
-        /// <returns>New instance of <see cref="LedInputTable"/> that contains the change</returns>
+        /// <returns>The original table when unchanged, otherwise an updated copy</returns>
         public static LedInputTable CreateWithBlink(this LedInputTable table, int idx, LedBlink blink)
         {
-            return new LedInputTable(table.Colors, table.Blinks.SetItem(idx, blink));
+            return idx >= 0 && idx < table.Blinks.Length && table.Blinks[idx] == blink
+                ? table
+                : new LedInputTable(table.Colors, table.Blinks.SetItem(idx, blink));
         }
     }
 }

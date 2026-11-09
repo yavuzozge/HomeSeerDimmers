@@ -87,7 +87,10 @@ namespace Ozy.HomeSeerDimmers.Apps.Dimmers.Commands
                 return false;
             }
 
-            if (Enum.TryParse(value.ToString(CultureInfo.InvariantCulture), out T candidate) && Enum.IsDefined(candidate))
+            // Eleven characters cover every signed 32-bit integer.
+            Span<char> buffer = stackalloc char[11];
+            _ = value.TryFormat(buffer, out int written, provider: CultureInfo.InvariantCulture);
+            if (Enum.TryParse(buffer[..written], out T candidate) && Enum.IsDefined(candidate))
             {
                 enumValue = candidate;
                 return true;

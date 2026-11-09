@@ -16,6 +16,7 @@ namespace HomeSeerDimmerUnitTests.Commands
     public class ZWaveCommandTests
     {
         [TestMethod]
+        [DataRow(0)]
         [DataRow(10)]
         [DataRow(255)]
         public async Task BlinkFrequencyIsSerializedAsTheRequestedJsonInteger(int frequency)
@@ -52,13 +53,13 @@ namespace HomeSeerDimmerUnitTests.Commands
             {
                 Value = JsonSerializer.SerializeToElement(1)
             };
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), CancellationToken.None)).ReturnsAsync(configuration);
 
             DimmerConfig current = await connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None);
 
-            current.Colors.Should().Equal(Enumerable.Range(0, 7).Select(i => i == index ? LedStatusColor.White : LedStatusColor.Off));
-            current.Blinks.Should().Equal(Enumerable.Range(0, 7).Select(i => i == index ? LedBlink.On : LedBlink.Off));
+            _ = current.Colors.Should().Equal(Enumerable.Range(0, 7).Select(i => i == index ? LedStatusColor.White : LedStatusColor.Off));
+            _ = current.Blinks.Should().Equal(Enumerable.Range(0, 7).Select(i => i == index ? LedBlink.On : LedBlink.Off));
 
             await connection.Object.SetZWaveLedColorAsync(device, index, LedStatusColor.White, CancellationToken.None);
             await connection.Object.SetZWaveLedBlinkAsync(device, index, LedBlink.On, CancellationToken.None);
@@ -73,6 +74,76 @@ namespace HomeSeerDimmerUnitTests.Commands
         }
 
         [TestMethod]
+        [DataRow(-1)]
+        [DataRow(7)]
+        [DataRow(31)]
+        [DataRow(32)]
+        [DataRow(int.MinValue)]
+        [DataRow(int.MaxValue)]
+        public void InvalidLedPositionsAreRejectedBeforeParameterArithmetic(int index)
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
+            Mock<IHomeAssistantConnection> connection = new();
+
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveLedColorAsync(device, index, LedStatusColor.Red, CancellationToken.None)).ParamName.Should().Be("index");
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveLedBlinkAsync(device, index, LedBlink.On, CancellationToken.None)).ParamName.Should().Be("index");
+
+            connection.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        [DataRow(-1, -1, -1)]
+        [DataRow(8, 2, 2)]
+        [DataRow(int.MaxValue, int.MaxValue, int.MaxValue)]
+        public void UndefinedLedEnumsAreRejectedBeforeSendingCommands(int colorValue, int blinkValue, int modeValue)
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
+            Mock<IHomeAssistantConnection> connection = new();
+
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveLedColorAsync(device, 0, (LedStatusColor)colorValue, CancellationToken.None)).ParamName.Should().Be("color");
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveLedBlinkAsync(device, 0, (LedBlink)blinkValue, CancellationToken.None)).ParamName.Should().Be("blink");
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveCustomLedStatusModeAsync(device, (CustomLedStatusMode)modeValue, CancellationToken.None)).ParamName.Should().Be("mode");
+
+            connection.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        [DataRow(-1)]
+        [DataRow(256)]
+        [DataRow(int.MaxValue)]
+        public void OutOfRangeBlinkFrequenciesAreRejectedBeforeSendingCommands(int frequency)
+        {
+            Mock<IHomeAssistantConnection> connection = new();
+
+            _ = Assert.Throws<ArgumentOutOfRangeException>(() =>
+                connection.Object.SetZWaveBlinkFrequencyAsync(ZWaveTestDevices.CreateDevice(), frequency, CancellationToken.None))
+                .ParamName.Should().Be("blinkFrequency");
+
+            connection.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        [DataRow(CustomLedStatusMode.Disable)]
+        [DataRow(CustomLedStatusMode.Enable)]
+        public async Task BothCustomLedModesAreSerializedAsJsonIntegers(CustomLedStatusMode mode)
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
+            Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
+            using CancellationTokenSource cancellation = new();
+
+            await connection.Object.SetZWaveCustomLedStatusModeAsync(device, mode, cancellation.Token);
+
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.Is<CommandMessage>(command => IsParameter(command, device.Id, 13, null, (int)mode)),
+                cancellation.Token), Times.Once);
+        }
+
+        [TestMethod]
         [DataRow("{\"status\":\"rejected\"}")]
         [DataRow("{\"status\":\"working\"}")]
         [DataRow("{\"status\":null}")]
@@ -83,10 +154,10 @@ namespace HomeSeerDimmerUnitTests.Commands
         {
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(JsonSerializer.Deserialize<JsonElement>(json));
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, CancellationToken.None));
         }
 
@@ -95,10 +166,10 @@ namespace HomeSeerDimmerUnitTests.Commands
         {
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<CommandMessage>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((JsonElement?)null);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 connection.Object.SetZWaveCustomLedStatusModeAsync(device, CustomLedStatusMode.Enable, CancellationToken.None));
         }
 
@@ -107,11 +178,11 @@ namespace HomeSeerDimmerUnitTests.Commands
         {
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync((IDictionary<string, ZwaveConfigParameters>?)null);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveConfigParametersAsync(device, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveConfigParametersAsync(device, CancellationToken.None));
         }
 
         [TestMethod]
@@ -121,12 +192,12 @@ namespace HomeSeerDimmerUnitTests.Commands
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
             Dictionary<string, ZwaveConfigParameters> configuration = ZWaveTestDevices.CreateConfiguration(device);
             configuration["37-112-0-27"] = new ZwaveConfigParameters(27, null, "enumerated", JsonSerializer.SerializeToElement(8));
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(configuration);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
-            configuration.Remove("37-112-0-27");
-            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
+            _ = configuration.Remove("37-112-0-27");
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
         }
 
         [TestMethod]
@@ -138,11 +209,29 @@ namespace HomeSeerDimmerUnitTests.Commands
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
             Dictionary<string, ZwaveConfigParameters> configuration = ZWaveTestDevices.CreateConfiguration(device);
-            configuration.Remove(key);
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = configuration.Remove(key);
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(configuration);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
+        }
+
+        [TestMethod]
+        [DataRow("37-112-0-31-64", 2)]
+        [DataRow("37-112-0-13", 2)]
+        [DataRow("37-112-0-30", -1)]
+        [DataRow("37-112-0-30", 256)]
+        public async Task OutOfRangeDeviceConfigurationIsRejected(string key, int value)
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
+            Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
+            Dictionary<string, ZwaveConfigParameters> configuration = ZWaveTestDevices.CreateConfiguration(device);
+            configuration[key] = configuration[key] with { Value = JsonSerializer.SerializeToElement(value) };
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+                It.IsAny<GetZWaveConfigParametersHaCommand>(), It.IsAny<CancellationToken>())).ReturnsAsync(configuration);
+
+            _ = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None));
         }
 
         [TestMethod]
@@ -171,11 +260,17 @@ namespace HomeSeerDimmerUnitTests.Commands
             using CancellationTokenSource cancellation = new();
             cancellation.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetDevicesExtendedAsync(cancellation.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetZWaveConfigParametersAsync(device, cancellation.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, cancellation.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.RefreshNodeValuesAsync(device, cancellation.Token));
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.RefreshNodeCcValuesAsync(device, ZWaveCommandClassId.DoorLock, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetDevicesExtendedAsync(cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetZWaveConfigParametersAsync(device, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveConfigParameterAsync(device, 31, 64, 1, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.GetZWaveDimmerConfigAsync(device, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveLedColorAsync(device, 0, LedStatusColor.Red, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveLedBlinkAsync(device, 0, LedBlink.On, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveCustomLedStatusModeAsync(device, CustomLedStatusMode.Enable, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveBlinkFrequencyAsync(device, 10, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.RefreshNodeValuesAsync(device, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.RefreshNodeCcValuesAsync(device, ZWaveCommandClassId.DoorLock, cancellation.Token));
 
             connection.VerifyNoOtherCalls();
         }
@@ -186,10 +281,10 @@ namespace HomeSeerDimmerUnitTests.Commands
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice();
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
             using CancellationTokenSource cancellation = new();
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<SetZWaveConfigParameterHaCommand>(), cancellation.Token))
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(It.IsAny<SetZWaveConfigParameterHaCommand>(), cancellation.Token))
                 .Callback(cancellation.Cancel).ReturnsAsync((JsonElement?)null);
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, cancellation.Token));
         }
 
         [TestMethod]
@@ -198,6 +293,9 @@ namespace HomeSeerDimmerUnitTests.Commands
         [DataRow("[[],[\"zwave_js\",\"4023755774-37-12:17479:12342\"]]", true, 37)]
         [DataRow("[null,[\"zwave_js\",\"4023755774-37\"]]", true, 37)]
         [DataRow("[[\"zwave_js\",null],[\"zwave_js\",\"4023755774-37\"]]", true, 37)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-1\"]]", true, 37)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-g2\"]]", true, 37)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-bad\"],[\"zwave_js\",\"4023755774-37\"]]", true, 37)]
         [DataRow("[]", false, 0)]
         [DataRow("null", false, 0)]
         [DataRow("[[\"other\",\"4023755774-37\"]]", false, 0)]
@@ -205,6 +303,21 @@ namespace HomeSeerDimmerUnitTests.Commands
         [DataRow("[[\"zwave_js\",\"4023755774-0\"]]", false, 0)]
         [DataRow("[[\"zwave_js\",\"4023755774--1\"]]", false, 0)]
         [DataRow("[[\"zwave_js\",\"4023755774-2147483648\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"invalid-37\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"-37\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"0-37\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4294967296-37\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37 \"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-+37\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37\",\"extra\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-bad\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-1-extra\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-12:17479\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-12:17479:12342:1\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-12:17479:65536\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-g\"]]", false, 0)]
+        [DataRow("[[\"zwave_js\",\"4023755774-37-g0\"]]", false, 0)]
         public void NodeIdentificationDoesNotDependOnIdentifierOrder(string json, bool expected, int expectedNodeId)
         {
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice() with
@@ -212,16 +325,16 @@ namespace HomeSeerDimmerUnitTests.Commands
                 Identifiers = JsonSerializer.Deserialize<IList<IList<string>>>(json)!
             };
 
-            device.TryGetZWaveNodeId(out int nodeId).Should().Be(expected);
-            nodeId.Should().Be(expectedNodeId);
+            _ = device.TryGetZWaveNodeId(out int nodeId).Should().Be(expected);
+            _ = nodeId.Should().Be(expectedNodeId);
         }
 
         [TestMethod]
         public void NullDevicesDoNotHaveAZWaveNodeId()
         {
-            ((HassDeviceExtended)null!).TryGetZWaveNodeId(out int nodeId).Should().BeFalse();
-            nodeId.Should().Be(0);
-            Assert.Throws<InvalidZWaveDeviceException>(() => ((HassDeviceExtended)null!).GetZWaveNodeId());
+            _ = ((HassDeviceExtended)null!).TryGetZWaveNodeId(out int nodeId).Should().BeFalse();
+            _ = nodeId.Should().Be(0);
+            _ = Assert.Throws<InvalidZWaveDeviceException>(() => ((HassDeviceExtended)null!).GetZWaveNodeId());
         }
 
         [TestMethod]
@@ -240,23 +353,23 @@ namespace HomeSeerDimmerUnitTests.Commands
                 }
                 """;
             HassDeviceExtended device = JsonSerializer.Deserialize<HassDeviceExtended>(registryJson)!;
-            device.Should().BeEquivalentTo(new HassDeviceExtended(
+            _ = device.Should().BeEquivalentTo(new HassDeviceExtended(
                 "device-38", "living_room", "Hall dimmer", "Hallway", "HomeSeer Technologies", "HS-WD200+",
                 new List<IList<string>> { new List<string> { "other", "bridge" }, new List<string> { "zwave_js", "4023755774-38" } })
             {
                 DisabledBy = "user"
             });
-            device.GetZWaveNodeId().Should().Be(38);
+            _ = device.GetZWaveNodeId().Should().Be(38);
 
             const string parameterJson = """
                 {"property":31,"property_key":64,"configuration_value_type":"enumerated","value":1}
                 """;
             ZwaveConfigParameters parameter = JsonSerializer.Deserialize<ZwaveConfigParameters>(parameterJson)!;
 
-            parameter.Property.Should().Be(31);
-            parameter.PropertyKey.Should().Be(64);
-            parameter.TryGetEnumeratedValue(out LedBlink blink).Should().BeTrue();
-            blink.Should().Be(LedBlink.On);
+            _ = parameter.Property.Should().Be(31);
+            _ = parameter.PropertyKey.Should().Be(64);
+            _ = parameter.TryGetEnumeratedValue(out LedBlink blink).Should().BeTrue();
+            _ = blink.Should().Be(LedBlink.On);
         }
 
         [TestMethod]
@@ -286,13 +399,13 @@ namespace HomeSeerDimmerUnitTests.Commands
                 """;
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice("secondary-device", nodeId: 38) with { Model = model };
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
-            connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseAsync<GetZWaveConfigParametersHaCommand, IDictionary<string, ZwaveConfigParameters>>(
                 It.IsAny<GetZWaveConfigParametersHaCommand>(), CancellationToken.None))
                 .ReturnsAsync(JsonSerializer.Deserialize<Dictionary<string, ZwaveConfigParameters>>(json));
 
             DimmerConfig result = await connection.Object.GetZWaveDimmerConfigAsync(device, CancellationToken.None);
 
-            result.Should().BeEquivalentTo(new DimmerConfig(
+            _ = result.Should().BeEquivalentTo(new DimmerConfig(
                 ImmutableArray.Create(LedStatusColor.Red, LedStatusColor.Green, LedStatusColor.Blue, LedStatusColor.Magenta,
                     LedStatusColor.Yellow, LedStatusColor.Cyan, LedStatusColor.White),
                 ImmutableArray.Create(LedBlink.On, LedBlink.Off, LedBlink.On, LedBlink.Off, LedBlink.On, LedBlink.Off, LedBlink.On),
@@ -307,8 +420,29 @@ namespace HomeSeerDimmerUnitTests.Commands
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice() with { Identifiers = new List<IList<string>>() };
             Mock<IHomeAssistantConnection> connection = new();
 
-            await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
+            _ = await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
                 connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, CancellationToken.None));
+            connection.VerifyNoOtherCalls();
+        }
+
+        [TestMethod]
+        [DataRow(null)]
+        [DataRow("")]
+        [DataRow(" ")]
+        public async Task MissingRegistryIdsAreRejectedBeforeSendingCommands(string? id)
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice() with { Id = id! };
+            Mock<IHomeAssistantConnection> connection = new();
+
+            _ = await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
+                connection.Object.GetZWaveConfigParametersAsync(device, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
+                connection.Object.SetZWaveConfigParameterAsync(device, 30, 10, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
+                connection.Object.RefreshNodeValuesAsync(device, CancellationToken.None));
+            _ = await Assert.ThrowsAsync<InvalidZWaveDeviceException>(() =>
+                connection.Object.RefreshNodeCcValuesAsync(device, ZWaveCommandClassId.Basic, CancellationToken.None));
+
             connection.VerifyNoOtherCalls();
         }
 
@@ -326,8 +460,8 @@ namespace HomeSeerDimmerUnitTests.Commands
         {
             ZwaveConfigParameters configuration = new(21, null, "enumerated", JsonSerializer.Deserialize<JsonElement>(json));
 
-            configuration.TryGetEnumeratedValue(out LedStatusColor color).Should().Be(expected);
-            color.Should().Be(expectedColor);
+            _ = configuration.TryGetEnumeratedValue(out LedStatusColor color).Should().Be(expected);
+            _ = color.Should().Be(expectedColor);
         }
 
         [TestMethod]
@@ -341,18 +475,62 @@ namespace HomeSeerDimmerUnitTests.Commands
         {
             ZwaveConfigParameters configuration = new(30, null, "manual_entry", JsonSerializer.Deserialize<JsonElement>(json));
 
-            configuration.TryGetIntValue(out int value).Should().Be(expected);
-            value.Should().Be(expectedValue);
+            _ = configuration.TryGetIntValue(out int value).Should().Be(expected);
+            _ = value.Should().Be(expectedValue);
         }
 
         [TestMethod]
         public void MissingOrMismatchedConfigurationTypesAreNotAccepted()
         {
             ZwaveConfigParameters configuration = new(21, null, "manual_entry", JsonSerializer.SerializeToElement(1));
-            configuration.TryGetEnumeratedValue(out LedStatusColor _).Should().BeFalse();
-            (configuration with { ValueType = "enumerated" }).TryGetIntValue(out _).Should().BeFalse();
-            ((ZwaveConfigParameters)null!).TryGetEnumeratedValue(out LedStatusColor _).Should().BeFalse();
-            ((ZwaveConfigParameters)null!).TryGetIntValue(out _).Should().BeFalse();
+            _ = configuration.TryGetEnumeratedValue(out LedStatusColor _).Should().BeFalse();
+            _ = (configuration with { ValueType = "enumerated" }).TryGetIntValue(out _).Should().BeFalse();
+            _ = ((ZwaveConfigParameters)null!).TryGetEnumeratedValue(out LedStatusColor _).Should().BeFalse();
+            _ = ((ZwaveConfigParameters)null!).TryGetIntValue(out _).Should().BeFalse();
+        }
+
+        [TestMethod]
+        [DataRow(int.MinValue, true, int.MinValue)]
+        [DataRow(int.MaxValue, true, int.MaxValue)]
+        [DataRow(1, false, 0)]
+        public void NumericEnumParsingPreservesTheFullSignedIntegerRange(int value, bool expected, int expectedValue)
+        {
+            ZwaveConfigParameters configuration = new(21, null, "enumerated", JsonSerializer.SerializeToElement(value));
+
+            _ = configuration.TryGetEnumeratedValue(out SignedTestValue parsed).Should().Be(expected);
+            _ = parsed.Should().Be((SignedTestValue)expectedValue);
+        }
+
+        [TestMethod]
+        [DataRow(0, true, 0)]
+        [DataRow(255, true, 255)]
+        [DataRow(256, false, 0)]
+        [DataRow(-1, false, 0)]
+        public void NumericEnumParsingDoesNotWrapNarrowUnderlyingTypes(int value, bool expected, int expectedValue)
+        {
+            ZwaveConfigParameters configuration = new(21, null, "enumerated", JsonSerializer.SerializeToElement(value));
+
+            _ = configuration.TryGetEnumeratedValue(out ByteTestValue parsed).Should().Be(expected);
+            _ = parsed.Should().Be((ByteTestValue)expectedValue);
+        }
+
+        /// <summary>
+        /// Supplies signed boundary values for enum parsing tests.
+        /// </summary>
+        private enum SignedTestValue
+        {
+            Minimum = int.MinValue,
+            None = 0,
+            Maximum = int.MaxValue
+        }
+
+        /// <summary>
+        /// Supplies byte boundary values for enum parsing tests.
+        /// </summary>
+        private enum ByteTestValue : byte
+        {
+            None = 0,
+            Maximum = byte.MaxValue
         }
 
         /// <summary>
@@ -370,7 +548,7 @@ namespace HomeSeerDimmerUnitTests.Commands
             return command.Type == "zwave_js/set_config_parameter"
                 && json.GetProperty("device_id").GetString() == deviceId
                 && json.GetProperty("property").GetInt32() == property
-                && (propertyKey == null ? json.GetProperty("property_key").ValueKind == JsonValueKind.Null
+                && (propertyKey == null ? !json.TryGetProperty("property_key", out _)
                     : json.GetProperty("property_key").GetInt32() == propertyKey)
                 && json.GetProperty("value").ValueKind == JsonValueKind.Number
                 && json.GetProperty("value").GetInt32() == value;

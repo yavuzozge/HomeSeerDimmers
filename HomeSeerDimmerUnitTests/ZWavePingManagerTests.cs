@@ -44,7 +44,7 @@ namespace HomeSeerDimmerUnitTests
         [TestInitialize]
         public void Initialize()
         {
-            this.appConfig.Setup(c => c.Value).Returns(this.config);
+            _ = this.appConfig.Setup(c => c.Value).Returns(this.config);
             this.config.ZWavePingDevices.Add(new PingZwaveDevice { Name = "Lock", RefreshCommandClassId = ZWaveCommandClassId.DoorLock });
         }
 
@@ -55,17 +55,17 @@ namespace HomeSeerDimmerUnitTests
             HassDeviceExtended healthy = ZWaveTestDevices.CreateDevice("healthy", "Sensor");
             this.config.ZWavePingDevices.Add(new PingZwaveDevice { Name = "Sensor", RefreshCommandClassId = ZWaveCommandClassId.SensorBinary });
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(failed, healthy);
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == failed.Id), It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new HomeAssistantApiCallException("Device unavailable"));
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
 
             await this.CreateManager().PingDevicesAsync(CancellationToken.None);
 
             connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == healthy.Id
                     && command.CommandClassId == (int)ZWaveCommandClassId.SensorBinary), CancellationToken.None), Times.Once);
-            this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
+            _ = this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
                 && Equals(invocation.Arguments[0], LogLevel.Error));
         }
 
@@ -74,11 +74,11 @@ namespace HomeSeerDimmerUnitTests
         {
             HassDeviceExtended device = ZWaveTestDevices.CreateDevice(name: "Lock");
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
-            connection.SetupSequence(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+            _ = connection.SetupSequence(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                 It.IsAny<BasicHaCommand>(), CancellationToken.None))
                 .ReturnsAsync(Array.Empty<HassDeviceExtended>())
                 .ReturnsAsync(new[] { device });
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
             ZWavePingManager manager = this.CreateManager();
 
             await manager.PingDevicesAsync(CancellationToken.None);
@@ -93,7 +93,7 @@ namespace HomeSeerDimmerUnitTests
                 It.IsAny<BasicHaCommand>(), CancellationToken.None), Times.Exactly(2));
             connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == device.Id), CancellationToken.None), Times.Once);
-            this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
+            _ = this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
                 && Equals(invocation.Arguments[0], LogLevel.Warning));
         }
 
@@ -103,14 +103,14 @@ namespace HomeSeerDimmerUnitTests
             HassDeviceExtended oldDevice = ZWaveTestDevices.CreateDevice("old", "Lock");
             HassDeviceExtended replacement = ZWaveTestDevices.CreateDevice("new", "Lock");
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(oldDevice, replacement);
-            connection.SetupSequence(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
+            _ = connection.SetupSequence(c => c.SendCommandAndReturnResponseAsync<BasicHaCommand, IReadOnlyCollection<HassDeviceExtended>>(
                 It.IsAny<BasicHaCommand>(), CancellationToken.None))
                 .ReturnsAsync(new[] { oldDevice })
                 .ReturnsAsync(new[] { replacement });
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == oldDevice.Id), CancellationToken.None))
                 .ThrowsAsync(new InvalidOperationException("Device removed"));
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
             ZWavePingManager manager = this.CreateManager();
 
             await manager.PingDevicesAsync(CancellationToken.None);
@@ -127,7 +127,7 @@ namespace HomeSeerDimmerUnitTests
         {
             this.config.ZWaveDevicesDiscoveryValidity = TimeSpan.Zero;
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(ZWaveTestDevices.CreateDevice(name: "Lock"));
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
             ZWavePingManager manager = this.CreateManager();
 
             await manager.PingDevicesAsync(CancellationToken.None);
@@ -143,12 +143,62 @@ namespace HomeSeerDimmerUnitTests
             HassDeviceExtended disabled = ZWaveTestDevices.CreateDevice("disabled", "Lock") with { DisabledBy = "user" };
             HassDeviceExtended nonZWave = ZWaveTestDevices.CreateDevice("non-zwave", "Lock") with { Identifiers = new List<IList<string>>() };
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(disabled, nonZWave);
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
 
             await this.CreateManager().PingDevicesAsync(CancellationToken.None);
 
             connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
                 It.IsAny<RefreshNodeCcValuesHaCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [TestMethod]
+        public async Task AUserAssignedDeviceNameCanSelectTheConfiguredPing()
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice("lock", "Factory name") with { NameByUser = "Lock" };
+            Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+
+            await this.CreateManager().PingDevicesAsync(CancellationToken.None);
+
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == device.Id
+                    && command.CommandClassId == (int)ZWaveCommandClassId.DoorLock), CancellationToken.None), Times.Once);
+            _ = this.logger.Invocations.Should().NotContain(invocation => invocation.Method.Name == "Log"
+                && Equals(invocation.Arguments[0], LogLevel.Warning));
+        }
+
+        [TestMethod]
+        public async Task RegistryNameSelectionTakesPrecedenceOverAnAlias()
+        {
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice("lock", "Factory name") with { NameByUser = "Lock" };
+            this.config.ZWavePingDevices.Add(new PingZwaveDevice { Name = "Factory name", RefreshCommandClassId = ZWaveCommandClassId.SensorBinary });
+            Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+
+            await this.CreateManager().PingDevicesAsync(CancellationToken.None);
+
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.Is<RefreshNodeCcValuesHaCommand>(command => command.CommandClassId == (int)ZWaveCommandClassId.SensorBinary),
+                CancellationToken.None), Times.Once);
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.IsAny<RefreshNodeCcValuesHaCommand>(), CancellationToken.None), Times.Once);
+        }
+
+        [TestMethod]
+        public async Task DuplicateConfiguredNamesPreserveTheFirstCommandClass()
+        {
+            this.config.ZWavePingDevices.Add(new PingZwaveDevice { Name = "Lock", RefreshCommandClassId = ZWaveCommandClassId.SensorBinary });
+            HassDeviceExtended device = ZWaveTestDevices.CreateDevice(name: "Lock");
+            Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(device);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+
+            await this.CreateManager().PingDevicesAsync(CancellationToken.None);
+
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.Is<RefreshNodeCcValuesHaCommand>(command => command.CommandClassId == (int)ZWaveCommandClassId.DoorLock),
+                CancellationToken.None), Times.Once);
+            connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
+                It.IsAny<RefreshNodeCcValuesHaCommand>(), CancellationToken.None), Times.Once);
         }
 
         [TestMethod]
@@ -158,12 +208,12 @@ namespace HomeSeerDimmerUnitTests
             HassDeviceExtended second = ZWaveTestDevices.CreateDevice("second", "Lock");
             Mock<IHomeAssistantConnection> connection = ZWaveTestDevices.CreateConnection(first, second);
             using CancellationTokenSource cancellation = new();
-            connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
+            _ = connection.Setup(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == first.Id), cancellation.Token))
                 .Callback(cancellation.Cancel);
-            this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
+            _ = this.runner.SetupGet(r => r.CurrentConnection).Returns(connection.Object);
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => this.CreateManager().PingDevicesAsync(cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => this.CreateManager().PingDevicesAsync(cancellation.Token));
 
             connection.Verify(c => c.SendCommandAndReturnResponseRawAsync(
                 It.Is<RefreshNodeCcValuesHaCommand>(command => command.DeviceId == second.Id), It.IsAny<CancellationToken>()), Times.Never);
@@ -175,7 +225,7 @@ namespace HomeSeerDimmerUnitTests
             using CancellationTokenSource cancellation = new();
             cancellation.Cancel();
 
-            await Assert.ThrowsAsync<OperationCanceledException>(() => this.CreateManager().PingDevicesAsync(cancellation.Token));
+            _ = await Assert.ThrowsAsync<OperationCanceledException>(() => this.CreateManager().PingDevicesAsync(cancellation.Token));
 
             this.runner.VerifyNoOtherCalls();
         }
@@ -185,7 +235,7 @@ namespace HomeSeerDimmerUnitTests
         {
             await this.CreateManager().PingDevicesAsync(CancellationToken.None);
 
-            this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
+            _ = this.logger.Invocations.Should().Contain(invocation => invocation.Method.Name == "Log"
                 && Equals(invocation.Arguments[0], LogLevel.Error));
         }
 
